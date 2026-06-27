@@ -545,30 +545,6 @@ def command_render_resume(args: argparse.Namespace) -> None:
     print(output)
 
 
-def command_export_docx(args: argparse.Namespace) -> None:
-    target_dir = target_dir_from_args(args)
-    document_path = target_dir / "drafts" / "resume_document.json"
-    if not document_path.exists():
-        raise SystemExit("Run build-resume-document before export-docx")
-    output = target_dir / "drafts" / "resume.docx"
-    exporter = load_script_module("export-docx.py", "export_docx")
-    exporter.export_docx(document_path, output)
-    append_artifact(target_dir, {"type": "resume_docx", "path": "drafts/resume.docx"})
-    print(output)
-
-
-def command_export_pdf(args: argparse.Namespace) -> None:
-    target_dir = target_dir_from_args(args)
-    html_path = target_dir / "drafts" / "resume.html"
-    if not html_path.exists():
-        raise SystemExit("Run render-resume before export-pdf")
-    output = target_dir / "drafts" / "resume.pdf"
-    exporter = load_script_module("export-pdf.py", "export_pdf")
-    exporter.export_pdf(html_path, output)
-    append_artifact(target_dir, {"type": "resume_pdf", "path": "drafts/resume.pdf"})
-    print(output)
-
-
 def append_artifact(target_dir: Path, artifact: dict[str, str]) -> None:
     state = read_json(target_dir / "application-state.json")
     versions = list(state.get("artifact_versions", []))
@@ -711,13 +687,6 @@ def build_parser() -> argparse.ArgumentParser:
     render.add_argument("--target-dir", required=True)
     render.set_defaults(func=command_render_resume)
 
-    export_docx = sub.add_parser("export-docx", help="Export resume_document.json to editable DOCX")
-    export_docx.add_argument("--target-dir", required=True)
-    export_docx.set_defaults(func=command_export_docx)
-
-    export_pdf = sub.add_parser("export-pdf", help="Export rendered resume.html to PDF using Playwright")
-    export_pdf.add_argument("--target-dir", required=True)
-    export_pdf.set_defaults(func=command_export_pdf)
 
     validate = sub.add_parser("validate-state", help="Validate target workspace state")
     validate.add_argument("--target-dir", required=True)

@@ -33,13 +33,12 @@ This skill keeps that process explicit and inspectable.
 - Creates a section-first resume plan before selecting event prose.
 - Generates per-event rewrite drafts and requires approval before final draft
   assembly.
-- Builds `resume_document.json` and renders editable HTML.
-- Exports editable DOCX from the structured document.
-- Exports PDF from rendered HTML when Playwright/Chromium is available.
+- Builds `resume_document.json` and renders editable ATS HTML for review and revision.
 
 Current limits: the agent performs internet research; the Python CLI only
-records and validates research results. DOCX export is intentionally simple and
-editable; the HTML renderer remains the primary layout path.
+records and validates research results. Final PDF and DOCX generation are not
+part of this MVP; they should be handled by a complete artifact finalizer with
+rendered output verification.
 
 ## How It Works
 
@@ -56,7 +55,7 @@ record-research -> update-target
 check career-timeline vault
         |
         v
-section-first plan -> per-event rewrite -> approved resume document -> HTML / DOCX / PDF
+section-first plan -> per-event rewrite -> approved resume document -> editable ATS HTML
 ```
 
 The agent handles judgment-heavy work such as JD interpretation and event
@@ -71,9 +70,8 @@ ln -s /Users/pt623/Documents/career-application \
   /Users/pt623/.codex/skills/career-application
 ```
 
-The core CLI uses the Python standard library and targets Python 3.10+.
-PDF export additionally requires Playwright with Chromium. Development tests use
-`pytest`.
+The CLI uses the Python standard library and targets Python 3.10+.
+Development tests use `pytest`.
 
 ## Quick Start
 
@@ -137,20 +135,6 @@ python scripts/career_application.py render-resume \
   --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer
 ```
 
-Export an editable DOCX or browser-rendered PDF:
-
-```bash
-python scripts/career_application.py export-docx \
-  --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer
-
-python scripts/career_application.py export-pdf \
-  --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer
-```
-
-`export-pdf` requires Playwright with Chromium installed. The editable HTML also
-includes an in-browser toolbar for edit mode, saving a revised HTML file, and
-printing to PDF.
-
 Run `python scripts/career_application.py --help` for all commands.
 
 ## Target Workspace Files
@@ -169,9 +153,7 @@ target_YYYYMMDD_company_role/
   drafts/
     rewrite_drafts.json        # per-event rewrite drafts
     resume_document.json       # structured resume document
-    resume.html                # editable rendered resume
-    resume.docx                # editable Word-compatible export
-    resume.pdf                 # optional Playwright HTML-to-PDF export
+    resume.html                # editable ATS resume review surface
 ```
 
 ## Agent Workflow
@@ -188,7 +170,7 @@ target_YYYYMMDD_company_role/
    drafting.
 6. Rewrite one event at a time and keep source event traceability.
 7. Build `resume_document.json` only after selected rewrites are approved.
-8. Render editable HTML for user review. Export DOCX for manual editing or PDF after layout approval.
+8. Render editable ATS HTML for user review and revision. Use a separate finalizer for verified PDF/DOCX output.
 
 ## Project Layout
 
@@ -198,8 +180,6 @@ career-application/
   scripts/
     career_application.py
     render-resume.py
-    export-docx.py
-    export-pdf.py
   references/
     target-research.md
     section-strategy.md
@@ -218,8 +198,7 @@ career-application/
 This is an early skill-first MVP. It currently supports target workspace
 creation, research recording, target updating, timeline readiness checks,
 section-first planning, per-event rewrite approval, structured resume document
-generation, editable HTML rendering, editable DOCX export, and optional PDF
-export through Playwright.
+generation, and editable ATS HTML rendering.
 
 Planned next steps:
 

@@ -75,7 +75,6 @@ EDIT_MODE_JS = r"""
     setEditing(!document.body.classList.contains('editing'));
   });
   document.querySelector('[data-action="save-html"]')?.addEventListener('click', saveHtml);
-  document.querySelector('[data-action="print-pdf"]')?.addEventListener('click', () => window.print());
   document.addEventListener('keydown', (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
       event.preventDefault();
@@ -129,7 +128,6 @@ def render_resume(document: dict, css: str) -> str:
   <div class="resume-edit-toolbar" aria-label="Resume edit toolbar">
     <button type="button" data-action="toggle-edit">Edit</button>
     <button type="button" data-action="save-html">Save HTML</button>
-    <button type="button" data-action="print-pdf">Print PDF</button>
   </div>
   <main class="page">
     {editable(str(profile.get("display_name", "")), "profile.display_name", "h1")}

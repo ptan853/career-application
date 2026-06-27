@@ -18,7 +18,7 @@ Target decides structure. Sections define evidence needs. Timeline events supply
 ```text
 target research -> candidate positioning -> section strategy -> evidence mapping
 -> plan confirmation -> section-by-section drafting -> event-by-event rewriting
--> render/export -> revision loop
+-> render editable ATS HTML -> revision loop
 ```
 
 Never start by dumping all timeline events into a resume.
@@ -54,7 +54,7 @@ personal facts or source material that cannot be inferred from local files.
 7. **Evidence mapping**: map timeline events into planned sections and list omitted relevant events.
 8. **Plan confirmation**: show the section order, selected events, gaps, risks, page count, and design mode. Wait for user approval.
 9. **Drafting**: draft one section at a time. For experience/project sections, rewrite one event at a time. Read `references/event-rewrite.md`.
-10. **Artifact generation**: generate `resume_document.json`, editable HTML, optional DOCX, and PDF only after the user has approved the draft. PDF export requires Playwright/Chromium; DOCX export remains editable but uses a simpler layout than HTML.
+10. **Artifact generation**: generate `resume_document.json` and editable ATS HTML only after the user has approved the draft. Do not produce final PDF or DOCX from this skill; use a complete artifact finalizer with render verification when final files are required.
 
 ## References
 
@@ -76,9 +76,7 @@ Use `scripts/career_application.py` for deterministic file operations:
 - `create-rewrite-drafts`: create per-event rewrite drafts from selected plan events.
 - `approve-rewrite`: mark one event rewrite as user-approved.
 - `build-resume-document`: build `drafts/resume_document.json` only after all selected rewrites are approved.
-- `render-resume`: render `drafts/resume_document.json` to editable `drafts/resume.html`.
-- `export-docx`: export `drafts/resume_document.json` to editable `drafts/resume.docx`.
-- `export-pdf`: export rendered `drafts/resume.html` to `drafts/resume.pdf` using Playwright.
+- `render-resume`: render `drafts/resume_document.json` to editable ATS `drafts/resume.html`.
 - `validate-state`: check required workspace files and supported statuses.
 
 ## Approval Gates
@@ -89,6 +87,6 @@ Ask for user approval before:
 - moving from resume plan to prose drafting
 - dropping a planned section or selected event
 - using a visual non-ATS template for a formal application
-- exporting a final PDF
+- requesting a final PDF or DOCX handoff to another artifact finalizer
 
 No approval is needed for reading local timeline files, producing research drafts, generating previews, or validating intermediate JSON.
