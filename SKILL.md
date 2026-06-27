@@ -59,6 +59,8 @@ Before drafting final application text:
 Use `scripts/career_application.py` for deterministic file operations:
 
 - `init-target`: create a target workspace with `target.json`, `application-state.json`, `jd.md`, `drafts/`, and `sources/`.
+- `record-research`: save agent-produced JD/company/role research into `research.md` and `sources/research_*.json`.
+- `update-target`: merge recorded research into `target.json` for planning.
 - `check-timeline`: inspect a `career-timeline` vault and write `timeline_readiness.json`.
 - `create-plan`: generate a section-first `resume_plan.json` only after timeline readiness passes.
 - `create-rewrite-drafts`: create per-event rewrite drafts from selected plan events.

@@ -263,6 +263,105 @@ def command_create_plan(args: argparse.Namespace) -> None:
     print(target_dir / "resume_plan.json")
 
 
+def command_record_research(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    research = load_research_input(Path(args.file).expanduser().resolve())
+    source_id = f"research_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    record = {
+        "schema_version": 1,
+        "id": source_id,
+        "recorded_at": now_iso(),
+        "source_url": args.source_url or "",
+        "source_type": args.source_type,
+        "confidence": args.confidence,
+        "research": research,
+    }
+    source_path = target_dir / "sources" / f"{source_id}.json"
+    write_json(source_path, record)
+    append_research_markdown(target_dir / "research.md", record)
+    update_state(target_dir, status="researching_target")
+    print(source_path)
+
+
+def load_research_input(path: Path) -> dict[str, Any]:
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() == ".json":
+        data = json.loads(text)
+        if not isinstance(data, dict):
+            raise SystemExit("Research JSON must be an object")
+        return data
+    return {"summary": text.strip()}
+
+
+def append_research_markdown(path: Path, record: dict[str, Any]) -> None:
+    research = record["research"]
+    lines = [
+        f"## {record['id']}",
+        "",
+        f"- Source type: {record['source_type']}",
+        f"- Source URL: {record['source_url'] or 'n/a'}",
+        f"- Recorded at: {record['recorded_at']}",
+        f"- Confidence: {record['confidence']}",
+        "",
+        str(research.get("summary", "")).strip(),
+        "",
+    ]
+    for key in ("hiring_priorities", "must_have", "nice_to_have", "keywords", "company_context", "risks"):
+        values = [str(value) for value in research.get(key, []) if str(value).strip()]
+        if values:
+            lines.extend([f"### {key}", ""])
+            lines.extend(f"- {value}" for value in values)
+            lines.append("")
+    existing = path.read_text(encoding="utf-8") if path.exists() else "# Target Research\n\n"
+    path.write_text(existing.rstrip() + "\n\n" + "\n".join(lines), encoding="utf-8")
+
+
+def command_update_target(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    target_path = target_dir / "target.json"
+    target = read_json(target_path)
+    source_records = [read_json(path) for path in sorted((target_dir / "sources").glob("research_*.json"))]
+    for record in source_records:
+        research = record.get("research", {})
+        for field in ("hiring_priorities", "must_have", "nice_to_have", "keywords", "company_context", "risks"):
+            target[field] = merge_unique(research.get(field, []), target.get(field, []))
+        source_summary = {
+            "id": record.get("id"),
+            "source_type": record.get("source_type"),
+            "source_url": record.get("source_url", ""),
+            "recorded_at": record.get("recorded_at"),
+            "confidence": record.get("confidence"),
+        }
+        target["research_sources"] = merge_source_summaries([source_summary], target.get("research_sources", []))
+    target["updated_at"] = now_iso()
+    write_json(target_path, target)
+    update_state(target_dir, status="planning")
+    print(target_path)
+
+
+def merge_unique(existing: Any, incoming: Any) -> list[str]:
+    values: list[str] = []
+    for collection in (existing if isinstance(existing, list) else [], incoming if isinstance(incoming, list) else []):
+        for item in collection:
+            text = str(item).strip()
+            if text and text not in values:
+                values.append(text)
+    return values
+
+
+def merge_source_summaries(primary: Any, secondary: Any) -> list[dict[str, Any]]:
+    values: list[dict[str, Any]] = []
+    for collection in (primary if isinstance(primary, list) else [], secondary if isinstance(secondary, list) else []):
+        for item in collection:
+            if not isinstance(item, dict):
+                continue
+            key = (item.get("id"), item.get("source_url"), item.get("label"))
+            if any((value.get("id"), value.get("source_url"), value.get("label")) == key for value in values):
+                continue
+            values.append(item)
+    return values
+
+
 def command_create_rewrite_drafts(args: argparse.Namespace) -> None:
     target_dir = target_dir_from_args(args)
     vault = Path(args.vault).expanduser().resolve() if args.vault else Path.home() / ".career-vault"
@@ -549,6 +648,18 @@ def build_parser() -> argparse.ArgumentParser:
     plan = sub.add_parser("create-plan", help="Create a section-first resume plan")
     plan.add_argument("--target-dir", required=True)
     plan.set_defaults(func=command_create_plan)
+
+    record = sub.add_parser("record-research", help="Record agent-produced target research")
+    record.add_argument("--target-dir", required=True)
+    record.add_argument("--file", required=True, help="JSON or Markdown research draft produced by the agent")
+    record.add_argument("--source-url", default="")
+    record.add_argument("--source-type", default="agent_research")
+    record.add_argument("--confidence", default="medium")
+    record.set_defaults(func=command_record_research)
+
+    update_target = sub.add_parser("update-target", help="Merge recorded research into target.json")
+    update_target.add_argument("--target-dir", required=True)
+    update_target.set_defaults(func=command_update_target)
 
     rewrite = sub.add_parser("create-rewrite-drafts", help="Create per-event rewrite drafts from an approved plan")
     rewrite.add_argument("--target-dir", required=True)

@@ -189,6 +189,76 @@ def test_create_plan_refuses_when_timeline_is_not_ready(tmp_path: Path) -> None:
     assert "Timeline is not ready" in result.stderr
 
 
+def test_record_research_and_update_target_merge_agent_findings(tmp_path: Path) -> None:
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--company",
+        "Example Corp",
+        "--role",
+        "AI Engineer",
+        "--language",
+        "en",
+        "--artifact",
+        "resume",
+        "--channel",
+        "ats",
+        "--page-count",
+        "1",
+        "--jd-text",
+        "Initial JD text.",
+    )
+    target_dir = Path(init.stdout.strip())
+    research = tmp_path / "research.json"
+    research.write_text(
+        json.dumps(
+            {
+                "summary": "Example Corp needs production LLM agent engineers.",
+                "hiring_priorities": ["LLM agent engineering", "evaluation systems"],
+                "must_have": ["Python", "tool orchestration"],
+                "nice_to_have": ["LangGraph"],
+                "keywords": ["LLM", "agent", "evaluation", "Python"],
+                "company_context": ["Builds enterprise AI systems."],
+                "risks": ["No explicit model training evidence found."],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    run_cli(
+        "record-research",
+        "--target-dir",
+        str(target_dir),
+        "--file",
+        str(research),
+        "--source-url",
+        "https://example.com/jobs/ai-engineer",
+        "--source-type",
+        "job_posting",
+    )
+
+    research_md = (target_dir / "research.md").read_text(encoding="utf-8")
+    source_files = sorted((target_dir / "sources").glob("research_*.json"))
+    assert "Example Corp needs production LLM agent engineers." in research_md
+    assert len(source_files) == 1
+    source = json.loads(source_files[0].read_text(encoding="utf-8"))
+    assert source["source_url"] == "https://example.com/jobs/ai-engineer"
+    assert source["source_type"] == "job_posting"
+
+    run_cli("update-target", "--target-dir", str(target_dir))
+
+    target = json.loads((target_dir / "target.json").read_text(encoding="utf-8"))
+    assert target["hiring_priorities"][:2] == ["LLM agent engineering", "evaluation systems"]
+    assert "tool orchestration" in target["must_have"]
+    assert "LangGraph" in target["nice_to_have"]
+    assert "No explicit model training evidence found." in target["risks"]
+    assert target["research_sources"][0]["source_url"] == "https://example.com/jobs/ai-engineer"
+    state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
+    assert state["status"] == "planning"
+
+
 def test_rewrite_drafts_require_plan_and_build_resume_requires_approval(tmp_path: Path) -> None:
     vault = tmp_path / "vault"
     write_vault(vault)

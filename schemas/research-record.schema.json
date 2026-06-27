@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ResearchRecord",
+  "type": "object",
+  "required": ["schema_version", "id", "recorded_at", "source_type", "research"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "id": { "type": "string" },
+    "recorded_at": { "type": "string" },
+    "source_url": { "type": "string" },
+    "source_type": { "type": "string" },
+    "confidence": { "type": "string" },
+    "research": {
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "hiring_priorities": { "type": "array", "items": { "type": "string" } },
+        "must_have": { "type": "array", "items": { "type": "string" } },
+        "nice_to_have": { "type": "array", "items": { "type": "string" } },
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "company_context": { "type": "array", "items": { "type": "string" } },
+        "risks": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
