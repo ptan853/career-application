@@ -162,7 +162,9 @@ target_YYYYMMDD_company_role/
 2. Research the target with available agent tools when current information or a
    URL is involved.
 3. Record research with `record-research`, then merge it with `update-target`.
-4. Check `career-timeline` readiness before drafting.
+4. Check `career-timeline` readiness before drafting. If the vault is
+   missing profile fields or usable events, the agent should invoke
+   `career-timeline` directly; do not ask the user to run a slash command.
 5. Create and show the section-first plan. Wait for user approval before prose
    drafting.
 6. Rewrite one event at a time and keep source event traceability.

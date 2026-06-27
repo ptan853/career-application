@@ -30,8 +30,14 @@ Before drafting final application text:
 1. Read the local career vault, usually `~/.career-vault`.
 2. Check profile basics: name, email, phone, location.
 3. Check whether relevant events are confirmed or user-approved.
-4. If facts are missing, stop and ask to use `career-timeline` to fill them.
+4. If facts are missing, invoke the `career-timeline` skill/workflow yourself to fill the gaps.
 5. Do not create or confirm long-term facts inside this skill.
+
+Do not tell the user to run `/career timeline` or any other slash command. The
+agent is responsible for switching to the installed `career-timeline` skill,
+reading its `SKILL.md`, saving sources or extracting events as needed, and then
+returning here after timeline readiness passes. Ask the user only for missing
+personal facts or source material that cannot be inferred from local files.
 
 ## Workflow
 
@@ -39,6 +45,10 @@ Before drafting final application text:
 2. **Target research**: if current company, role, URL, or market facts matter, research them and record source URLs.
 3. **Target profile**: write a structured target understanding before planning content.
 4. **Timeline readiness**: compare target evidence needs with available vault events.
+   If readiness fails, use `career-timeline` directly to collect missing profile
+   fields, preserve source material, or create reviewed event drafts. Resume
+   this workflow only after the vault is ready or the user explicitly chooses to
+   continue with known gaps.
 5. **Candidate positioning**: state the application narrative in one or two sentences.
 6. **Section strategy first**: choose sections before choosing events. Read `references/section-strategy.md`.
 7. **Evidence mapping**: map timeline events into planned sections and list omitted relevant events.
