@@ -54,7 +54,7 @@ personal facts or source material that cannot be inferred from local files.
 7. **Evidence mapping**: map timeline events into planned sections and list omitted relevant events.
 8. **Plan confirmation**: show the section order, selected events, gaps, risks, page count, and design mode. Wait for user approval.
 9. **Drafting**: draft one section at a time. For experience/project sections, rewrite one event at a time. Read `references/event-rewrite.md`.
-10. **Artifact generation**: generate `resume_document.json`, editable HTML, optional Markdown, and PDF only when rendering is available and the user has approved the draft.
+10. **Artifact generation**: generate `resume_document.json`, editable HTML, optional DOCX, and PDF only after the user has approved the draft. PDF export requires Playwright/Chromium; DOCX export remains editable but uses a simpler layout than HTML.
 
 ## References
 
@@ -77,6 +77,8 @@ Use `scripts/career_application.py` for deterministic file operations:
 - `approve-rewrite`: mark one event rewrite as user-approved.
 - `build-resume-document`: build `drafts/resume_document.json` only after all selected rewrites are approved.
 - `render-resume`: render `drafts/resume_document.json` to editable `drafts/resume.html`.
+- `export-docx`: export `drafts/resume_document.json` to editable `drafts/resume.docx`.
+- `export-pdf`: export rendered `drafts/resume.html` to `drafts/resume.pdf` using Playwright.
 - `validate-state`: check required workspace files and supported statuses.
 
 ## Approval Gates

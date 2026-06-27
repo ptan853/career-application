@@ -302,6 +302,7 @@ def test_rewrite_drafts_require_plan_and_build_resume_requires_approval(tmp_path
     run_cli("approve-rewrite", "--target-dir", str(target_dir), "--event-id", "evt_agent_platform")
     run_cli("build-resume-document", "--target-dir", str(target_dir))
     run_cli("render-resume", "--target-dir", str(target_dir))
+    run_cli("export-docx", "--target-dir", str(target_dir))
 
     document = json.loads((target_dir / "drafts" / "resume_document.json").read_text(encoding="utf-8"))
     assert document["artifact_type"] == "resume"
@@ -311,6 +312,11 @@ def test_rewrite_drafts_require_plan_and_build_resume_requires_approval(tmp_path
     html = (target_dir / "drafts" / "resume.html").read_text(encoding="utf-8")
     assert "Pat Example" in html
     assert "Agent Platform" in html
+    docx = target_dir / "drafts" / "resume.docx"
+    assert docx.exists()
+    assert docx.read_bytes().startswith(b"PK")
     state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
     assert state["status"] == "ready_for_review"
-    assert state["artifact_versions"][-1]["path"] == "drafts/resume.html"
+    artifact_paths = [artifact["path"] for artifact in state["artifact_versions"]]
+    assert "drafts/resume.html" in artifact_paths
+    assert "drafts/resume.docx" in artifact_paths

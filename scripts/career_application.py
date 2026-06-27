@@ -541,18 +541,50 @@ def command_render_resume(args: argparse.Namespace) -> None:
     document = read_json(document_path)
     _, css = renderer.load_design(Path(__file__).resolve().parents[1], document.get("design_id", "ats-classic"))
     output.write_text(renderer.render_resume(document, css), encoding="utf-8")
-    state = read_json(target_dir / "application-state.json")
-    versions = list(state.get("artifact_versions", []))
-    versions.append({"type": "resume_html", "path": "drafts/resume.html"})
-    update_state(target_dir, artifact_versions=versions, status="ready_for_review")
+    append_artifact(target_dir, {"type": "resume_html", "path": "drafts/resume.html"})
     print(output)
 
 
+def command_export_docx(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    document_path = target_dir / "drafts" / "resume_document.json"
+    if not document_path.exists():
+        raise SystemExit("Run build-resume-document before export-docx")
+    output = target_dir / "drafts" / "resume.docx"
+    exporter = load_script_module("export-docx.py", "export_docx")
+    exporter.export_docx(document_path, output)
+    append_artifact(target_dir, {"type": "resume_docx", "path": "drafts/resume.docx"})
+    print(output)
+
+
+def command_export_pdf(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    html_path = target_dir / "drafts" / "resume.html"
+    if not html_path.exists():
+        raise SystemExit("Run render-resume before export-pdf")
+    output = target_dir / "drafts" / "resume.pdf"
+    exporter = load_script_module("export-pdf.py", "export_pdf")
+    exporter.export_pdf(html_path, output)
+    append_artifact(target_dir, {"type": "resume_pdf", "path": "drafts/resume.pdf"})
+    print(output)
+
+
+def append_artifact(target_dir: Path, artifact: dict[str, str]) -> None:
+    state = read_json(target_dir / "application-state.json")
+    versions = list(state.get("artifact_versions", []))
+    versions.append(artifact)
+    update_state(target_dir, artifact_versions=versions, status="ready_for_review")
+
+
 def load_resume_renderer() -> Any:
-    path = Path(__file__).with_name("render-resume.py")
-    spec = importlib.util.spec_from_file_location("render_resume", path)
+    return load_script_module("render-resume.py", "render_resume")
+
+
+def load_script_module(filename: str, module_name: str) -> Any:
+    path = Path(__file__).with_name(filename)
+    spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
-        raise SystemExit("Cannot load render-resume.py")
+        raise SystemExit(f"Cannot load {filename}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -678,6 +710,14 @@ def build_parser() -> argparse.ArgumentParser:
     render = sub.add_parser("render-resume", help="Render approved resume_document.json to editable HTML")
     render.add_argument("--target-dir", required=True)
     render.set_defaults(func=command_render_resume)
+
+    export_docx = sub.add_parser("export-docx", help="Export resume_document.json to editable DOCX")
+    export_docx.add_argument("--target-dir", required=True)
+    export_docx.set_defaults(func=command_export_docx)
+
+    export_pdf = sub.add_parser("export-pdf", help="Export rendered resume.html to PDF using Playwright")
+    export_pdf.add_argument("--target-dir", required=True)
+    export_pdf.set_defaults(func=command_export_pdf)
 
     validate = sub.add_parser("validate-state", help="Validate target workspace state")
     validate.add_argument("--target-dir", required=True)
