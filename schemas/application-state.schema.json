@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ApplicationState",
+  "type": "object",
+  "required": ["schema_version", "application_id", "created_at", "updated_at", "target", "status"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "application_id": { "type": "string" },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "target": { "type": "object" },
+    "timeline_readiness": { "type": "object" },
+    "section_strategy": { "type": "object" },
+    "resume_plan": { "type": "object" },
+    "artifact_versions": { "type": "array", "items": { "type": "object" } },
+    "decisions": { "type": "array", "items": { "type": "object" } },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planning",
+        "researching_target",
+        "needs_timeline",
+        "planning_resume",
+        "rewriting_events",
+        "rendering",
+        "ready_for_review",
+        "exported",
+        "archived"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

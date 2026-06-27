@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TimelineReadiness",
+  "type": "object",
+  "required": ["schema_version", "ready", "vault", "checked_at", "missing_profile_fields", "event_counts", "usable_event_ids", "gaps"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "ready": { "type": "boolean" },
+    "vault": { "type": "string" },
+    "checked_at": { "type": "string" },
+    "missing_profile_fields": { "type": "array", "items": { "type": "string" } },
+    "event_counts": {
+      "type": "object",
+      "required": ["total", "confirmed", "needs_review", "usable"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "confirmed": { "type": "integer", "minimum": 0 },
+        "needs_review": { "type": "integer", "minimum": 0 },
+        "usable": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "usable_event_ids": { "type": "array", "items": { "type": "string" } },
+    "gaps": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

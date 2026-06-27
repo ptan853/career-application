@@ -54,6 +54,15 @@ Before drafting final application text:
 - Artifact generation: `references/artifact-generation.md`
 - ATS and page layout: `references/ats-and-layout.md`
 
+## CLI Helpers
+
+Use `scripts/career_application.py` for deterministic file operations:
+
+- `init-target`: create a target workspace with `target.json`, `application-state.json`, `jd.md`, `drafts/`, and `sources/`.
+- `check-timeline`: inspect a `career-timeline` vault and write `timeline_readiness.json`.
+- `create-plan`: generate a section-first `resume_plan.json` only after timeline readiness passes.
+- `validate-state`: check required workspace files and supported statuses.
+
 ## Approval Gates
 
 Ask for user approval before:
