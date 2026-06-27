@@ -1,0 +1,58 @@
+:root {
+  color: #172026;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.36;
+}
+
+body {
+  margin: 0;
+  background: #f5f7f8;
+}
+
+.page {
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 16mm 18mm;
+  background: #fff;
+}
+
+h1, h2, h3, p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 22pt;
+}
+
+.contact {
+  margin-top: 5pt;
+  color: #4a5963;
+}
+
+h2 {
+  margin-top: 14pt;
+  color: #0f5f75;
+  font-size: 12pt;
+}
+
+.item {
+  margin-top: 7pt;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12pt;
+  font-weight: 700;
+}
+
+ul {
+  margin: 3pt 0 0 14pt;
+  padding: 0;
+}
+
+li {
+  margin: 2pt 0;
+}

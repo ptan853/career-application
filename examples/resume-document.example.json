@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "target_id": "target_example_ai_engineer",
+  "artifact_type": "resume",
+  "language": "en",
+  "page_count": 1,
+  "design_id": "ats-classic",
+  "profile": {
+    "display_name": "Example Candidate",
+    "email": "candidate@example.com",
+    "phone": "+1 555 0100",
+    "location": "New York, NY",
+    "links": []
+  },
+  "sections": [
+    {
+      "section_id": "projects",
+      "title": "Projects",
+      "purpose": "Show target-relevant engineering evidence",
+      "items": [
+        {
+          "source_event_ids": ["evt_example_agent_project"],
+          "heading": "Agent Workflow Platform",
+          "meta": "2026",
+          "bullets": [
+            {
+              "text": "Built a tool-orchestration workflow that connected planning, execution, and validation steps for agent tasks.",
+              "source_event_ids": ["evt_example_agent_project"],
+              "source_claims": [],
+              "risk": "confirmed"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "risks": [],
+  "change_report": []
+}

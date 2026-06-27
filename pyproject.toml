@@ -1,0 +1,11 @@
+[project]
+name = "career-application"
+version = "0.1.0"
+requires-python = ">=3.10"
+description = "Target-first job application skill scaffolding."
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

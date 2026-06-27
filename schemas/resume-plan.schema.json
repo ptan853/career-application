@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ResumePlan",
+  "type": "object",
+  "required": ["schema_version", "target_id", "positioning", "sections", "page_count", "design_id"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "target_id": { "type": "string" },
+    "positioning": { "type": "string" },
+    "page_count": { "type": "integer", "minimum": 1 },
+    "design_id": { "type": "string" },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["section_id", "title", "purpose", "selected_events"],
+        "properties": {
+          "section_id": { "type": "string" },
+          "title": { "type": "string" },
+          "purpose": { "type": "string" },
+          "selected_events": { "type": "array", "items": { "type": "string" } },
+          "risks": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

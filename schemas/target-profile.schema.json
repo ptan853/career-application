@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TargetProfile",
+  "type": "object",
+  "required": ["schema_version", "target_id", "role", "language", "artifact_goals", "hiring_priorities"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "target_id": { "type": "string" },
+    "company": { "type": "string" },
+    "role": { "type": "string" },
+    "language": { "type": "string" },
+    "region": { "type": "string" },
+    "application_channel": { "type": "string" },
+    "artifact_goals": { "type": "array", "items": { "type": "string" } },
+    "hiring_priorities": { "type": "array", "items": { "type": "string" } },
+    "must_have": { "type": "array", "items": { "type": "string" } },
+    "nice_to_have": { "type": "array", "items": { "type": "string" } },
+    "keywords": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "research_sources": { "type": "array", "items": { "type": "object" } }
+  },
+  "additionalProperties": true
+}

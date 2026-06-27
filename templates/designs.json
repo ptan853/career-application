@@ -1,0 +1,17 @@
+{
+  "default_design_id": "ats-classic",
+  "designs": {
+    "ats-classic": {
+      "label": "ATS classic single-column",
+      "ats_safe": true,
+      "style_file": "styles/ats-classic.css",
+      "preview_file": "previews/ats-classic.html"
+    },
+    "engineer-modern": {
+      "label": "Engineer modern",
+      "ats_safe": true,
+      "style_file": "styles/engineer-modern.css",
+      "preview_file": "previews/engineer-modern.html"
+    }
+  }
+}

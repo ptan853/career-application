@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ResumeDocument",
+  "type": "object",
+  "required": ["schema_version", "target_id", "artifact_type", "language", "page_count", "design_id", "profile", "sections"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "target_id": { "type": "string" },
+    "artifact_type": { "type": "string", "const": "resume" },
+    "language": { "type": "string" },
+    "page_count": { "type": "integer", "minimum": 1 },
+    "design_id": { "type": "string" },
+    "profile": {
+      "type": "object",
+      "required": ["display_name", "email", "phone", "location"],
+      "properties": {
+        "display_name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "location": { "type": "string" },
+        "links": { "type": "array", "items": { "type": "object" } }
+      },
+      "additionalProperties": true
+    },
+    "sections": { "type": "array", "items": { "type": "object" } },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "change_report": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}
