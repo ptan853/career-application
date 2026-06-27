@@ -61,6 +61,10 @@ Use `scripts/career_application.py` for deterministic file operations:
 - `init-target`: create a target workspace with `target.json`, `application-state.json`, `jd.md`, `drafts/`, and `sources/`.
 - `check-timeline`: inspect a `career-timeline` vault and write `timeline_readiness.json`.
 - `create-plan`: generate a section-first `resume_plan.json` only after timeline readiness passes.
+- `create-rewrite-drafts`: create per-event rewrite drafts from selected plan events.
+- `approve-rewrite`: mark one event rewrite as user-approved.
+- `build-resume-document`: build `drafts/resume_document.json` only after all selected rewrites are approved.
+- `render-resume`: render `drafts/resume_document.json` to editable `drafts/resume.html`.
 - `validate-state`: check required workspace files and supported statuses.
 
 ## Approval Gates

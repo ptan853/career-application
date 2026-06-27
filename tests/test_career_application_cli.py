@@ -187,3 +187,60 @@ def test_create_plan_refuses_when_timeline_is_not_ready(tmp_path: Path) -> None:
     assert result.returncode != 0
     assert not (target_dir / "resume_plan.json").exists()
     assert "Timeline is not ready" in result.stderr
+
+
+def test_rewrite_drafts_require_plan_and_build_resume_requires_approval(tmp_path: Path) -> None:
+    vault = tmp_path / "vault"
+    write_vault(vault)
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--company",
+        "Example Corp",
+        "--role",
+        "AI Engineer",
+        "--language",
+        "en",
+        "--artifact",
+        "resume",
+        "--channel",
+        "ats",
+        "--page-count",
+        "1",
+        "--jd-text",
+        "Need LLM agent engineering, tool orchestration, and evaluation.",
+    )
+    target_dir = Path(init.stdout.strip())
+    run_cli("check-timeline", "--vault", str(vault), "--target-dir", str(target_dir))
+    run_cli("create-plan", "--target-dir", str(target_dir))
+
+    run_cli("create-rewrite-drafts", "--target-dir", str(target_dir), "--vault", str(vault))
+
+    drafts = json.loads((target_dir / "drafts" / "rewrite_drafts.json").read_text(encoding="utf-8"))
+    assert drafts["approval_status"] == "needs_event_approval"
+    assert drafts["items"][0]["event_id"] == "evt_agent_platform"
+    assert drafts["items"][0]["section_id"] == "projects"
+    assert drafts["items"][0]["status"] == "needs_user_approval"
+    assert "source_event_ids" in drafts["items"][0]["bullets"][0]
+
+    blocked = run_cli("build-resume-document", "--target-dir", str(target_dir), check=False)
+    assert blocked.returncode != 0
+    assert "Unapproved rewrite drafts" in blocked.stderr
+
+    run_cli("approve-rewrite", "--target-dir", str(target_dir), "--event-id", "evt_agent_platform")
+    run_cli("build-resume-document", "--target-dir", str(target_dir))
+    run_cli("render-resume", "--target-dir", str(target_dir))
+
+    document = json.loads((target_dir / "drafts" / "resume_document.json").read_text(encoding="utf-8"))
+    assert document["artifact_type"] == "resume"
+    assert document["profile"]["display_name"] == "Pat Example"
+    assert document["sections"][2]["section_id"] == "projects"
+    assert document["sections"][2]["items"][0]["source_event_ids"] == ["evt_agent_platform"]
+    html = (target_dir / "drafts" / "resume.html").read_text(encoding="utf-8")
+    assert "Pat Example" in html
+    assert "Agent Platform" in html
+    state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
+    assert state["status"] == "ready_for_review"
+    assert state["artifact_versions"][-1]["path"] == "drafts/resume.html"

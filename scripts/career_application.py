@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 import sys
@@ -262,6 +263,202 @@ def command_create_plan(args: argparse.Namespace) -> None:
     print(target_dir / "resume_plan.json")
 
 
+def command_create_rewrite_drafts(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    vault = Path(args.vault).expanduser().resolve() if args.vault else Path.home() / ".career-vault"
+    plan_path = target_dir / "resume_plan.json"
+    if not plan_path.exists():
+        raise SystemExit("Run create-plan before create-rewrite-drafts")
+    plan = read_json(plan_path)
+    events = {event.get("id"): event for event in load_events(vault) if event.get("id")}
+    items: list[dict[str, Any]] = []
+    for section in plan.get("sections", []):
+        for event_id in section.get("selected_events", []):
+            event = events.get(event_id)
+            if not event:
+                continue
+            items.append(build_rewrite_item(plan, section, event))
+    drafts = {
+        "schema_version": 1,
+        "target_id": plan["target_id"],
+        "created_at": now_iso(),
+        "approval_status": "needs_event_approval" if items else "no_events_selected",
+        "items": items,
+    }
+    output = target_dir / "drafts" / "rewrite_drafts.json"
+    write_json(output, drafts)
+    update_state(target_dir, status="rewriting_events")
+    print(output)
+
+
+def build_rewrite_item(plan: dict[str, Any], section: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
+    claims = [str(claim) for claim in event.get("claims", []) if str(claim).strip()]
+    first_claim = claims[0] if claims else f"Worked on {event.get('title', 'this experience')}."
+    bullet = adapt_claim_to_target(first_claim, plan)
+    return {
+        "event_id": event["id"],
+        "section_id": section["section_id"],
+        "status": "needs_user_approval",
+        "target_relevance": section.get("purpose", ""),
+        "source_title": event.get("title", ""),
+        "heading": event.get("title", ""),
+        "meta": format_event_meta(event),
+        "factual_inputs_used": {
+            "claims": claims,
+            "details": event.get("details", {}),
+        },
+        "bullets": [
+            {
+                "text": bullet,
+                "source_event_ids": [event["id"]],
+                "source_claims": claims[:1],
+                "risk": "confirmed" if event.get("status") == "confirmed" else "needs_review",
+            }
+        ],
+        "unsupported_or_weak_claims": [],
+    }
+
+
+def adapt_claim_to_target(claim: str, plan: dict[str, Any]) -> str:
+    text = claim.strip().rstrip(".")
+    priorities = []
+    for section in plan.get("sections", []):
+        if section.get("section_id") in {"summary", "skills"}:
+            continue
+        purpose = section.get("purpose", "")
+        if purpose:
+            priorities.append(purpose)
+    if "using" in text.lower() or "with" in text.lower():
+        return text + "."
+    return text + " for the target role's evidence needs."
+
+
+def format_event_meta(event: dict[str, Any]) -> str:
+    parts = []
+    organization = event.get("organization") or event.get("company")
+    role = event.get("role")
+    if organization:
+        parts.append(str(organization))
+    if role:
+        parts.append(str(role))
+    time = event.get("time") if isinstance(event.get("time"), dict) else {}
+    start = time.get("start")
+    end = time.get("end")
+    if start or end:
+        parts.append(f"{start or ''} - {end or 'Present'}")
+    return " | ".join(parts)
+
+
+def command_approve_rewrite(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    drafts_path = target_dir / "drafts" / "rewrite_drafts.json"
+    if not drafts_path.exists():
+        raise SystemExit("Run create-rewrite-drafts before approve-rewrite")
+    drafts = read_json(drafts_path)
+    matched = False
+    for item in drafts.get("items", []):
+        if item.get("event_id") == args.event_id:
+            item["status"] = "approved"
+            item["approved_at"] = now_iso()
+            matched = True
+    if not matched:
+        raise SystemExit(f"No rewrite draft for event_id: {args.event_id}")
+    drafts["approval_status"] = (
+        "approved" if all(item.get("status") == "approved" for item in drafts.get("items", [])) else "needs_event_approval"
+    )
+    write_json(drafts_path, drafts)
+    print(drafts_path)
+
+
+def command_build_resume_document(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    target = read_json(target_dir / "target.json")
+    plan = read_json(target_dir / "resume_plan.json")
+    drafts_path = target_dir / "drafts" / "rewrite_drafts.json"
+    if not drafts_path.exists():
+        raise SystemExit("Run create-rewrite-drafts before build-resume-document")
+    drafts = read_json(drafts_path)
+    unapproved = [item.get("event_id") for item in drafts.get("items", []) if item.get("status") != "approved"]
+    if unapproved:
+        raise SystemExit("Unapproved rewrite drafts: " + ", ".join(str(item) for item in unapproved))
+    readiness = read_json(target_dir / "timeline_readiness.json")
+    vault = Path(readiness["vault"])
+    profile = read_profile(vault).get("user", {})
+    draft_items = {(item["section_id"], item["event_id"]): item for item in drafts.get("items", [])}
+    sections: list[dict[str, Any]] = []
+    for section in plan.get("sections", []):
+        items = [
+            draft_items[(section["section_id"], event_id)]
+            for event_id in section.get("selected_events", [])
+            if (section["section_id"], event_id) in draft_items
+        ]
+        sections.append(
+            {
+                "section_id": section["section_id"],
+                "title": section["title"],
+                "purpose": section.get("purpose", ""),
+                "items": [
+                    {
+                        "source_event_ids": [item["event_id"]],
+                        "heading": item.get("heading", ""),
+                        "meta": item.get("meta", ""),
+                        "bullets": item.get("bullets", []),
+                    }
+                    for item in items
+                ],
+            }
+        )
+    document = {
+        "schema_version": 1,
+        "target_id": target["target_id"],
+        "artifact_type": "resume",
+        "language": target.get("language", "en"),
+        "page_count": plan.get("page_count", 1),
+        "design_id": plan.get("design_id", "ats-classic"),
+        "profile": {
+            "display_name": profile.get("display_name", ""),
+            "email": profile.get("email", ""),
+            "phone": profile.get("phone", ""),
+            "location": profile.get("location", ""),
+            "links": [],
+        },
+        "sections": sections,
+        "risks": plan.get("risks", []),
+        "change_report": ["Built from approved rewrite drafts."],
+    }
+    output = target_dir / "drafts" / "resume_document.json"
+    write_json(output, document)
+    update_state(target_dir, artifact_versions=[{"type": "resume_document", "path": "drafts/resume_document.json"}], status="ready_for_review")
+    print(output)
+
+
+def command_render_resume(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    document_path = target_dir / "drafts" / "resume_document.json"
+    if not document_path.exists():
+        raise SystemExit("Run build-resume-document before render-resume")
+    output = target_dir / "drafts" / "resume.html"
+    renderer = load_resume_renderer()
+    document = read_json(document_path)
+    _, css = renderer.load_design(Path(__file__).resolve().parents[1], document.get("design_id", "ats-classic"))
+    output.write_text(renderer.render_resume(document, css), encoding="utf-8")
+    state = read_json(target_dir / "application-state.json")
+    versions = list(state.get("artifact_versions", []))
+    versions.append({"type": "resume_html", "path": "drafts/resume.html"})
+    update_state(target_dir, artifact_versions=versions, status="ready_for_review")
+    print(output)
+
+
+def load_resume_renderer() -> Any:
+    path = Path(__file__).with_name("render-resume.py")
+    spec = importlib.util.spec_from_file_location("render_resume", path)
+    if spec is None or spec.loader is None:
+        raise SystemExit("Cannot load render-resume.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def build_positioning(target: dict[str, Any]) -> str:
     role = target.get("role") or "target role"
     priorities = target.get("hiring_priorities") or []
@@ -352,6 +549,24 @@ def build_parser() -> argparse.ArgumentParser:
     plan = sub.add_parser("create-plan", help="Create a section-first resume plan")
     plan.add_argument("--target-dir", required=True)
     plan.set_defaults(func=command_create_plan)
+
+    rewrite = sub.add_parser("create-rewrite-drafts", help="Create per-event rewrite drafts from an approved plan")
+    rewrite.add_argument("--target-dir", required=True)
+    rewrite.add_argument("--vault")
+    rewrite.set_defaults(func=command_create_rewrite_drafts)
+
+    approve = sub.add_parser("approve-rewrite", help="Approve one event rewrite draft")
+    approve.add_argument("--target-dir", required=True)
+    approve.add_argument("--event-id", required=True)
+    approve.set_defaults(func=command_approve_rewrite)
+
+    build_resume = sub.add_parser("build-resume-document", help="Build resume_document.json from approved rewrites")
+    build_resume.add_argument("--target-dir", required=True)
+    build_resume.set_defaults(func=command_build_resume_document)
+
+    render = sub.add_parser("render-resume", help="Render approved resume_document.json to editable HTML")
+    render.add_argument("--target-dir", required=True)
+    render.set_defaults(func=command_render_resume)
 
     validate = sub.add_parser("validate-state", help="Validate target workspace state")
     validate.add_argument("--target-dir", required=True)
