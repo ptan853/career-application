@@ -92,6 +92,7 @@ def test_designs_define_typography_budgets_used_by_renderer() -> None:
     assert "PingFang SC" in css
     assert "@page" in css
     assert "size: A4" in css
+    assert "margin: var(--resume-page-margin, 16mm)" in css
     assert "overflow-wrap: anywhere" in css
     assert "break-inside: avoid" in css
 
@@ -462,6 +463,17 @@ def test_revise_resume_document_updates_json_and_rerenders_html(tmp_path: Path) 
     assert new_bullet in html
     state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
     assert state["status"] == "ready_for_review"
+
+
+def test_playwright_pdf_uses_css_page_margins() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    assert finalizer.PDF_MARGIN == {"top": "0", "right": "0", "bottom": "0", "left": "0"}
 
 
 def test_finalize_rejects_unreadable_layout_budget() -> None:

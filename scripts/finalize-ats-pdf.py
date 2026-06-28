@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Any
 
 
+PDF_MARGIN = {"top": "0", "right": "0", "bottom": "0", "left": "0"}
+
+
 def dependency_error(message: str) -> None:
     print(f"Cannot create verified ATS PDF: {message}", file=sys.stderr)
     raise SystemExit(3)
@@ -106,7 +109,7 @@ def render_pdf_with_playwright(html_path: Path, output_pdf: Path) -> None:
                 format="A4",
                 print_background=True,
                 prefer_css_page_size=True,
-                margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
+                margin=PDF_MARGIN,
             )
         finally:
             browser.close()

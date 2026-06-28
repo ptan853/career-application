@@ -1,6 +1,6 @@
 @page {
   size: A4;
-  margin: 0;
+  margin: var(--resume-page-margin, 16mm);
 }
 
 * {
@@ -23,10 +23,9 @@ body {
 
 .page {
   box-sizing: border-box;
-  width: 210mm;
-  min-height: 297mm;
+  width: 100%;
+  min-height: auto;
   overflow-wrap: anywhere;
-  padding: var(--resume-page-margin, 16mm);
 }
 
 h1, h2, h3, p {
