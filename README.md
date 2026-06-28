@@ -34,7 +34,7 @@ This skill keeps that process explicit and inspectable.
 - Generates per-event rewrite drafts and requires approval before final draft
   assembly.
 - Builds `resume_document.json` and renders editable ATS HTML for review and revision.
-- Applies AI/agent revisions by updating structured edit keys in `resume_document.json`, then rerenders HTML.
+- Applies AI/agent revisions by updating structured edit keys or reviewed resume patches in `resume_document.json`, then rerenders HTML.
 - Finalizes ATS PDF only through a verified text-layer export path.
 
 Current limits: the agent performs internet research; the Python CLI only
@@ -138,7 +138,7 @@ python scripts/career_application.py render-resume \
   --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer
 ```
 
-Apply an agent-approved structured revision and rerender HTML:
+Apply an agent-approved field revision and rerender HTML:
 
 ```bash
 python scripts/career_application.py revise-resume-document \
@@ -147,6 +147,16 @@ python scripts/career_application.py revise-resume-document \
   --text "Rewritten bullet text." \
   --reason "Tightened wording for the target JD."
 ```
+
+Apply a reviewed structural patch for section, item, or bullet changes:
+
+```bash
+python scripts/career_application.py apply-resume-patch \
+  --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer \
+  --patch examples/resume-patch.example.json
+```
+
+The agent should show the patch summary to the user before applying it. Use patches for adding, removing, moving, or renaming sections/items/bullets.
 
 Finalize a verified ATS PDF only after the HTML is approved:
 
@@ -174,6 +184,7 @@ target_YYYYMMDD_company_role/
     rewrite_drafts.json        # per-event rewrite drafts
     resume_document.json       # structured resume document
     resume.html                # editable ATS resume review surface
+    resume_patch.json          # optional reviewed structural patch
     resume.pdf                 # verified ATS PDF, only after finalize-ats-pdf succeeds
 ```
 
@@ -191,7 +202,7 @@ target_YYYYMMDD_company_role/
    drafting.
 6. Rewrite one event at a time and keep source event traceability.
 7. Build `resume_document.json` only after selected rewrites are approved.
-8. Render editable ATS HTML for user review and revision. Apply requested changes to `resume_document.json`, then rerender HTML.
+8. Render editable ATS HTML for user review and revision. Apply small text changes by edit key; apply structural changes through reviewed resume patches; then rerender HTML.
 9. Finalize ATS PDF only after the user approves the HTML. Use a separate future finalizer for DOCX output.
 
 ## Project Layout
@@ -203,6 +214,10 @@ career-application/
     career_application.py
     render-resume.py
     finalize-ats-pdf.py
+  schemas/
+    resume-patch.schema.json
+  examples/
+    resume-patch.example.json
   references/
     target-research.md
     section-strategy.md
@@ -221,7 +236,7 @@ career-application/
 This is an early skill-first MVP. It currently supports target workspace
 creation, research recording, target updating, timeline readiness checks,
 section-first planning, per-event rewrite approval, structured resume document
-generation, editable ATS HTML rendering, structured document revisions, and verified ATS PDF finalization.
+generation, editable ATS HTML rendering, structured document revisions, reviewed structural patches, and verified ATS PDF finalization.
 
 Planned next steps:
 

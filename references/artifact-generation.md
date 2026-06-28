@@ -8,11 +8,12 @@ The first output path is structured JSON plus editable HTML.
 - `resume.html`: editable ATS browser output.
 - `resume.pdf`: verified ATS PDF generated only after HTML approval.
 - `resume.md`: optional quick review draft.
+- `resume_patch.json`: optional reviewed structural patch for section/item/bullet changes.
 - `change_report.md`: what changed and why.
 
 ## Rendering Rule
 
-HTML/CSS is the review and revision surface. Render HTML first, review or edit it in the browser, and keep it ATS-friendly: single-column, text-based, conventional headings, and no layout tricks needed for parsing. Agent-driven revisions must update `resume_document.json` by edit key, then rerender HTML. Final ATS PDF uses Chromium print PDF and must verify that required profile text exists in the PDF text layer. DOCX output remains outside this skill.
+HTML/CSS is the review and revision surface. Render HTML first, review or edit it in the browser, and keep it ATS-friendly: single-column, text-based, conventional headings, and no layout tricks needed for parsing. Agent-driven text revisions must update `resume_document.json` by edit key, then rerender HTML. Structural revisions must use a reviewed patch file and `apply-resume-patch`. Final ATS PDF uses Chromium print PDF and must verify that required profile text exists in the PDF text layer. DOCX output remains outside this skill.
 
 ## Template Selection
 
@@ -26,4 +27,9 @@ Do not claim a visual template is ATS-safe unless it is single-column, text-copy
 
 - `render-resume` writes editable ATS `drafts/resume.html` with an in-browser edit toolbar.
 - `revise-resume-document` updates one structured edit key and rerenders HTML.
+- `apply-resume-patch` applies reviewed section/item/bullet changes and rerenders HTML.
 - `finalize-ats-pdf` writes `drafts/resume.pdf` only after text-layer verification passes.
+
+## Patch Operations
+
+Use `apply-resume-patch` only after showing the user a summary and receiving approval. Supported operations: `rename-section`, `add-section`, `remove-section`, `move-section`, `add-item`, `remove-item`, `move-item`, `update-item`, `add-bullet`, `remove-bullet`, `move-bullet`, and `update-bullet`. See `schemas/resume-patch.schema.json` and `examples/resume-patch.example.json`.

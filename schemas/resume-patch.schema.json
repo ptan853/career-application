@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resume Patch",
+  "type": "object",
+  "required": [
+    "reason",
+    "operations"
+  ],
+  "properties": {
+    "reason": {
+      "type": "string"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "rename-section",
+              "add-section",
+              "remove-section",
+              "move-section",
+              "add-item",
+              "remove-item",
+              "move-item",
+              "update-item",
+              "add-bullet",
+              "remove-bullet",
+              "move-bullet",
+              "update-bullet"
+            ]
+          },
+          "section_id": {
+            "type": "string"
+          },
+          "section": {
+            "type": "object"
+          },
+          "item": {
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          },
+          "heading": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer"
+          },
+          "to_index": {
+            "type": "integer"
+          },
+          "from_index": {
+            "type": "integer"
+          },
+          "item_index": {
+            "type": "integer"
+          },
+          "bullet_index": {
+            "type": "integer"
+          },
+          "source_event_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_claims": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "risk": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

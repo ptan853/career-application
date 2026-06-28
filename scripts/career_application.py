@@ -563,6 +563,203 @@ def command_revise_resume_document(args: argparse.Namespace) -> None:
     print(document_path)
 
 
+def command_apply_resume_patch(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    document_path = target_dir / "drafts" / "resume_document.json"
+    if not document_path.exists():
+        raise SystemExit("Run build-resume-document before apply-resume-patch")
+    patch = read_json(Path(args.patch).expanduser().resolve())
+    document = read_json(document_path)
+    apply_resume_patch(document, patch)
+    reason = str(patch.get("reason") or "Applied resume patch.").strip()
+    if reason:
+        document.setdefault("change_report", []).append(reason)
+    write_json(document_path, document)
+    render_resume_to_html(target_dir)
+    print(document_path)
+
+
+def apply_resume_patch(document: dict[str, Any], patch: dict[str, Any]) -> None:
+    operations = patch.get("operations")
+    if not isinstance(operations, list):
+        raise SystemExit("Resume patch must contain an operations list")
+    for operation in operations:
+        if not isinstance(operation, dict):
+            raise SystemExit("Resume patch operation must be an object")
+        apply_resume_patch_operation(document, operation)
+
+
+def apply_resume_patch_operation(document: dict[str, Any], operation: dict[str, Any]) -> None:
+    op = operation.get("op")
+    if op == "rename-section":
+        find_section(document, required_str(operation, "section_id"))["title"] = required_str(operation, "title")
+        return
+    if op == "add-section":
+        section = operation.get("section")
+        if not isinstance(section, dict):
+            raise SystemExit("add-section requires section object")
+        section = normalize_section(section)
+        sections = document.setdefault("sections", [])
+        index = bounded_insert_index(operation.get("index", len(sections)), len(sections))
+        sections.insert(index, section)
+        return
+    if op == "remove-section":
+        sections = document.get("sections", [])
+        index = section_index(document, required_str(operation, "section_id"))
+        sections.pop(index)
+        return
+    if op == "move-section":
+        sections = document.get("sections", [])
+        index = section_index(document, required_str(operation, "section_id"))
+        section = sections.pop(index)
+        sections.insert(bounded_insert_index(operation.get("to_index"), len(sections)), section)
+        return
+    if op == "add-item":
+        section = find_section(document, required_str(operation, "section_id"))
+        item = operation.get("item")
+        if not isinstance(item, dict):
+            raise SystemExit("add-item requires item object")
+        items = section.setdefault("items", [])
+        items.insert(bounded_insert_index(operation.get("index", len(items)), len(items)), normalize_item(item))
+        return
+    if op == "remove-item":
+        items = find_section(document, required_str(operation, "section_id")).setdefault("items", [])
+        items.pop(required_index(operation, "item_index", len(items)))
+        return
+    if op == "move-item":
+        items = find_section(document, required_str(operation, "section_id")).setdefault("items", [])
+        item = items.pop(required_index(operation, "from_index", len(items)))
+        items.insert(bounded_insert_index(operation.get("to_index"), len(items)), item)
+        return
+    if op == "update-item":
+        item = get_item(document, operation)
+        for field in ("heading", "meta"):
+            if field in operation:
+                item[field] = str(operation[field])
+        if "source_event_ids" in operation:
+            item["source_event_ids"] = list_of_strings(operation["source_event_ids"], "source_event_ids")
+        return
+    if op == "add-bullet":
+        item = get_item(document, operation)
+        bullets = item.setdefault("bullets", [])
+        bullet = {
+            "text": required_str(operation, "text"),
+            "source_event_ids": list_of_strings(operation.get("source_event_ids", item.get("source_event_ids", [])), "source_event_ids"),
+            "source_claims": list_of_strings(operation.get("source_claims", []), "source_claims"),
+            "risk": str(operation.get("risk", "needs_review")),
+        }
+        bullets.insert(bounded_insert_index(operation.get("index", len(bullets)), len(bullets)), bullet)
+        return
+    if op == "remove-bullet":
+        bullets = get_item(document, operation).setdefault("bullets", [])
+        bullets.pop(required_index(operation, "bullet_index", len(bullets)))
+        return
+    if op == "move-bullet":
+        bullets = get_item(document, operation).setdefault("bullets", [])
+        bullet = bullets.pop(required_index(operation, "from_index", len(bullets)))
+        bullets.insert(bounded_insert_index(operation.get("to_index"), len(bullets)), bullet)
+        return
+    if op == "update-bullet":
+        bullets = get_item(document, operation).setdefault("bullets", [])
+        bullet = bullets[required_index(operation, "bullet_index", len(bullets))]
+        if "text" in operation:
+            bullet["text"] = str(operation["text"])
+        if "source_event_ids" in operation:
+            bullet["source_event_ids"] = list_of_strings(operation["source_event_ids"], "source_event_ids")
+        if "source_claims" in operation:
+            bullet["source_claims"] = list_of_strings(operation["source_claims"], "source_claims")
+        if "risk" in operation:
+            bullet["risk"] = str(operation["risk"])
+        return
+    raise SystemExit(f"Unsupported patch operation: {op}")
+
+
+def normalize_section(section: dict[str, Any]) -> dict[str, Any]:
+    section_id = required_str(section, "section_id")
+    return {
+        "section_id": section_id,
+        "title": str(section.get("title") or section_id.replace("_", " ").title()),
+        "purpose": str(section.get("purpose", "")),
+        "items": [normalize_item(item) for item in section.get("items", []) if isinstance(item, dict)],
+    }
+
+
+def normalize_item(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source_event_ids": list_of_strings(item.get("source_event_ids", []), "source_event_ids"),
+        "heading": str(item.get("heading", "")),
+        "meta": str(item.get("meta", "")),
+        "bullets": [normalize_bullet(bullet, item) for bullet in item.get("bullets", []) if isinstance(bullet, dict)],
+    }
+
+
+def normalize_bullet(bullet: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "text": str(bullet.get("text", "")),
+        "source_event_ids": list_of_strings(bullet.get("source_event_ids", item.get("source_event_ids", [])), "source_event_ids"),
+        "source_claims": list_of_strings(bullet.get("source_claims", []), "source_claims"),
+        "risk": str(bullet.get("risk", "needs_review")),
+    }
+
+
+def get_item(document: dict[str, Any], operation: dict[str, Any]) -> dict[str, Any]:
+    section = find_section(document, required_str(operation, "section_id"))
+    items = section.setdefault("items", [])
+    return items[required_index(operation, "item_index", len(items))]
+
+
+def section_index(document: dict[str, Any], section_key: str) -> int:
+    sections = document.get("sections", [])
+    for index, section in enumerate(sections):
+        if str(section.get("section_id")) == section_key:
+            return index
+    try:
+        index = int(section_key)
+    except ValueError:
+        raise SystemExit(f"Unknown section in patch: {section_key}") from None
+    if index < 0 or index >= len(sections):
+        raise SystemExit(f"Unknown section in patch: {section_key}")
+    return index
+
+
+def required_str(data: dict[str, Any], key: str) -> str:
+    value = data.get(key)
+    if value is None or str(value).strip() == "":
+        raise SystemExit(f"Missing required patch field: {key}")
+    return str(value)
+
+
+def required_index(data: dict[str, Any], key: str, length: int) -> int:
+    value = data.get(key)
+    try:
+        index = int(value)
+    except (TypeError, ValueError):
+        raise SystemExit(f"Missing or invalid index field: {key}") from None
+    if index < 0 or index >= length:
+        raise SystemExit(f"Index out of range for {key}: {index}")
+    return index
+
+
+def bounded_insert_index(value: Any, length: int) -> int:
+    try:
+        index = int(value)
+    except (TypeError, ValueError):
+        raise SystemExit("Missing or invalid insert index") from None
+    if index < 0:
+        return 0
+    if index > length:
+        return length
+    return index
+
+
+def list_of_strings(value: Any, field_name: str) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise SystemExit(f"Patch field must be a list: {field_name}")
+    return [str(item) for item in value if str(item).strip()]
+
+
 def apply_resume_edit(document: dict[str, Any], edit_key: str, text: str) -> None:
     parts = edit_key.split(".")
     if parts == ["profile", "display_name"]:
@@ -767,6 +964,11 @@ def build_parser() -> argparse.ArgumentParser:
     revise.add_argument("--text", required=True)
     revise.add_argument("--reason", default="")
     revise.set_defaults(func=command_revise_resume_document)
+
+    patch = sub.add_parser("apply-resume-patch", help="Apply a reviewed structural patch to resume_document.json")
+    patch.add_argument("--target-dir", required=True)
+    patch.add_argument("--patch", required=True)
+    patch.set_defaults(func=command_apply_resume_patch)
 
     finalize_pdf = sub.add_parser("finalize-ats-pdf", help="Generate a verified text-based ATS PDF from rendered HTML")
     finalize_pdf.add_argument("--target-dir", required=True)

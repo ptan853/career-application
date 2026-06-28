@@ -54,7 +54,7 @@ personal facts or source material that cannot be inferred from local files.
 7. **Evidence mapping**: map timeline events into planned sections and list omitted relevant events.
 8. **Plan confirmation**: show the section order, selected events, gaps, risks, page count, and design mode. Wait for user approval.
 9. **Drafting**: draft one section at a time. For experience/project sections, rewrite one event at a time. Read `references/event-rewrite.md`.
-10. **Artifact generation**: generate `resume_document.json` and editable ATS HTML only after the user has approved the draft. For user revisions, update `resume_document.json` by edit key and rerender HTML; do not patch HTML directly. Finalize ATS PDF only after user approval and verified text-layer export. Do not produce DOCX from this skill.
+10. **Artifact generation**: generate `resume_document.json` and editable ATS HTML only after the user has approved the draft. For small text revisions, update `resume_document.json` by edit key. For section/item/bullet additions, removals, or ordering changes, present a resume patch summary to the user, then run `apply-resume-patch` only after approval. Do not patch HTML directly. Finalize ATS PDF only after user approval and verified text-layer export. Do not produce DOCX from this skill.
 
 ## References
 
@@ -78,6 +78,7 @@ Use `scripts/career_application.py` for deterministic file operations:
 - `build-resume-document`: build `drafts/resume_document.json` only after all selected rewrites are approved.
 - `render-resume`: render `drafts/resume_document.json` to editable ATS `drafts/resume.html`.
 - `revise-resume-document`: update one structured edit key in `resume_document.json` and rerender HTML.
+- `apply-resume-patch`: apply a reviewed structural patch for section/item/bullet changes and rerender HTML.
 - `finalize-ats-pdf`: generate `drafts/resume.pdf` only when Playwright and PDF text verification are available.
 - `validate-state`: check required workspace files and supported statuses.
 
@@ -87,7 +88,7 @@ Ask for user approval before:
 
 - using inferred target claims as durable target profile fields
 - moving from resume plan to prose drafting
-- dropping a planned section or selected event
+- applying a structural resume patch that adds, removes, moves, or renames sections/items/bullets
 - using a visual non-ATS template for a formal application
 - finalizing ATS PDF after the editable HTML review
 - requesting DOCX handoff to another artifact finalizer
