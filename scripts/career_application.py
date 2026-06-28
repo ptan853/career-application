@@ -130,6 +130,15 @@ def resolve_photo_policy(template: str, requested: str) -> str:
     return requested
 
 
+def design_typography_budget(design_id: str) -> dict[str, Any]:
+    designs_path = Path(__file__).resolve().parents[1] / "templates" / "designs.json"
+    designs = read_json(designs_path)
+    design = designs.get("designs", {}).get(design_id)
+    if not design:
+        raise SystemExit(f"Unknown design_id: {design_id}")
+    return dict(design.get("typography_budget", {}))
+
+
 def command_init_target(args: argparse.Namespace) -> None:
     if not has_target_context(args):
         raise SystemExit("Provide at least one target context: --role, --company, --domain, --industry, or --jd-text")
@@ -280,13 +289,15 @@ def command_create_plan(args: argparse.Namespace) -> None:
     event_ids = readiness.get("usable_event_ids", [])
     sections = choose_sections(target, event_ids)
     positioning = build_positioning(target)
+    design_id = target.get("template_preference", "ats-classic")
     plan = {
         "schema_version": 1,
         "target_id": target["target_id"],
         "positioning": positioning,
         "page_count": target.get("page_count", 1),
-        "design_id": target.get("template_preference", "ats-classic"),
+        "design_id": design_id,
         "photo_policy": target.get("photo_policy", "disabled"),
+        "layout_budget": design_typography_budget(design_id),
         "sections": sections,
         "gaps": [],
         "risks": ["Plan requires user approval before prose drafting."],
@@ -549,6 +560,7 @@ def command_build_resume_document(args: argparse.Namespace) -> None:
         "page_count": plan.get("page_count", 1),
         "design_id": plan.get("design_id", "ats-classic"),
         "photo_policy": plan.get("photo_policy", "disabled"),
+        "layout_budget": plan.get("layout_budget", {}),
         "profile": {
             "display_name": profile.get("display_name", ""),
             "email": profile.get("email", ""),

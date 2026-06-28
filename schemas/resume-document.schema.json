@@ -10,6 +10,8 @@
     "language": { "type": "string" },
     "page_count": { "type": "integer", "minimum": 1 },
     "design_id": { "type": "string" },
+    "photo_policy": { "type": "string" },
+    "layout_budget": { "type": "object" },
     "profile": {
       "type": "object",
       "required": ["display_name", "email", "phone", "location"],

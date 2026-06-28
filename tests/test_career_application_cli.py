@@ -67,6 +67,30 @@ def test_cli_exposes_structured_revision_and_verified_ats_pdf() -> None:
     assert "export-docx" not in result.stdout
 
 
+def test_designs_define_typography_budgets_used_by_renderer() -> None:
+    designs = json.loads((ROOT / "templates" / "designs.json").read_text(encoding="utf-8"))
+    ats_budget = designs["designs"]["ats-classic"]["typography_budget"]
+    modern_budget = designs["designs"]["engineer-modern"]["typography_budget"]
+
+    assert ats_budget["body_font_pt"] >= ats_budget["minimum_body_font_pt"] >= 10
+    assert modern_budget["body_font_pt"] >= modern_budget["minimum_body_font_pt"] >= 10
+    assert 1.15 <= ats_budget["line_height"] <= 1.3
+    assert 10 <= ats_budget["page_margin_mm"] <= 18
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("render_resume", ROOT / "scripts" / "render-resume.py")
+    assert spec and spec.loader
+    renderer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(renderer)
+    _, css = renderer.load_design(ROOT, "ats-classic")
+
+    assert "--resume-body-font-size: 10.5pt" in css
+    assert "--resume-min-body-font-size: 10pt" in css
+    assert "--resume-line-height: 1.24" in css
+    assert "--resume-page-margin: 16mm" in css
+
+
 def test_init_target_creates_workspace_state_and_jd(tmp_path: Path) -> None:
     root = tmp_path / "apps"
     result = run_cli(
@@ -204,6 +228,8 @@ def test_ats_template_disables_photo_and_drives_plan_design(tmp_path: Path) -> N
     plan = json.loads((target_dir / "resume_plan.json").read_text(encoding="utf-8"))
     assert plan["design_id"] == "ats-classic"
     assert plan["photo_policy"] == "disabled"
+    assert plan["layout_budget"]["body_font_pt"] == 10.5
+    assert plan["layout_budget"]["minimum_body_font_pt"] == 10
 
 
 def test_check_timeline_writes_readiness_and_reports_missing_profile(tmp_path: Path) -> None:
@@ -433,6 +459,56 @@ def test_revise_resume_document_updates_json_and_rerenders_html(tmp_path: Path) 
     assert state["status"] == "ready_for_review"
 
 
+def test_finalize_rejects_unreadable_layout_budget() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    document = {
+        "design_id": "ats-classic",
+        "page_count": 1,
+        "layout_budget": {
+            "body_font_pt": 9.5,
+            "minimum_body_font_pt": 10,
+            "line_height": 1.08,
+            "page_margin_mm": 8,
+        },
+        "profile": {
+            "display_name": "Pat Example",
+            "email": "pat@example.com",
+            "phone": "+1 555 0100",
+            "location": "San Francisco, CA",
+        },
+    }
+
+    try:
+        finalizer.ensure_ats_document(document)
+    except SystemExit as exc:
+        assert "unreadable layout budget" in str(exc)
+    else:
+        raise AssertionError("Expected unreadable layout budget to be rejected")
+
+
+def test_finalize_rejects_page_count_overflow() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    try:
+        finalizer.verify_pdf_page_count({"page_count": 1}, 2)
+    except SystemExit as exc:
+        assert "exceeds requested page count" in str(exc)
+        assert "shorten or remove content" in str(exc)
+    else:
+        raise AssertionError("Expected page overflow to be rejected")
+
+
 def test_finalize_ats_pdf_requires_verified_text_pdf_dependencies(tmp_path: Path) -> None:
     target_dir = build_reviewable_resume(tmp_path)
 
@@ -595,6 +671,7 @@ def test_rewrite_drafts_require_plan_and_build_resume_requires_approval(tmp_path
 
     document = json.loads((target_dir / "drafts" / "resume_document.json").read_text(encoding="utf-8"))
     assert document["artifact_type"] == "resume"
+    assert document["layout_budget"]["minimum_body_font_pt"] == 10
     assert document["profile"]["display_name"] == "Pat Example"
     assert document["sections"][2]["section_id"] == "projects"
     assert document["sections"][2]["items"][0]["source_event_ids"] == ["evt_agent_platform"]

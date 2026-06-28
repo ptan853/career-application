@@ -5,13 +5,29 @@
       "label": "ATS classic single-column",
       "ats_safe": true,
       "style_file": "styles/ats-classic.css",
-      "preview_file": "previews/ats-classic.html"
+      "preview_file": "previews/ats-classic.html",
+      "typography_budget": {
+        "body_font_pt": 10.5,
+        "minimum_body_font_pt": 10,
+        "heading_font_pt": 12,
+        "name_font_pt": 20,
+        "line_height": 1.24,
+        "page_margin_mm": 16
+      }
     },
     "engineer-modern": {
       "label": "Engineer modern",
       "ats_safe": true,
       "style_file": "styles/engineer-modern.css",
-      "preview_file": "previews/engineer-modern.html"
+      "preview_file": "previews/engineer-modern.html",
+      "typography_budget": {
+        "body_font_pt": 10.5,
+        "minimum_body_font_pt": 10,
+        "heading_font_pt": 12,
+        "name_font_pt": 22,
+        "line_height": 1.24,
+        "page_margin_mm": 16
+      }
     }
   }
 }

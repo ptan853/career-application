@@ -1,8 +1,8 @@
 :root {
   color: #172026;
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", Inter, Arial, Helvetica, sans-serif;
-  font-size: 10.5pt;
-  line-height: 1.36;
+  font-size: var(--resume-body-font-size, 10.5pt);
+  line-height: var(--resume-line-height, 1.24);
 }
 
 body {
@@ -14,7 +14,7 @@ body {
   box-sizing: border-box;
   width: 210mm;
   min-height: 297mm;
-  padding: 16mm 18mm;
+  padding: var(--resume-page-margin, 16mm);
   background: #fff;
 }
 
@@ -23,7 +23,7 @@ h1, h2, h3, p {
 }
 
 h1 {
-  font-size: 22pt;
+  font-size: var(--resume-name-font-size, 22pt);
 }
 
 .contact {
@@ -34,7 +34,7 @@ h1 {
 h2 {
   margin-top: 14pt;
   color: #0f5f75;
-  font-size: 12pt;
+  font-size: var(--resume-heading-font-size, 12pt);
 }
 
 .item {

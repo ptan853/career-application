@@ -13,7 +13,7 @@ Do not create Markdown resume drafts, Markdown review files, or separate change-
 
 ## Rendering Rule
 
-HTML/CSS is the review and revision surface. Render HTML first, review or edit it in the browser, and keep it ATS-friendly: single-column, text-based, conventional headings, and no layout tricks needed for parsing. Agent-driven text revisions must update `resume_document.json` by edit key, then rerender HTML. Structural revisions must use a reviewed patch file and `apply-resume-patch`. Final ATS PDF uses Chromium print PDF and must verify that required profile text exists in the PDF text layer. DOCX output remains outside this skill.
+HTML/CSS is the review and revision surface. Render HTML first, review or edit it in the browser, and keep it ATS-friendly: single-column, text-based, conventional headings, and no layout tricks needed for parsing. Agent-driven text revisions must update `resume_document.json` by edit key, then rerender HTML. Structural revisions must use a reviewed patch file and `apply-resume-patch`. Final ATS PDF uses Chromium print PDF and must verify required profile text, requested page count, and readable typography budget. DOCX output remains outside this skill.
 
 ## Template Selection
 

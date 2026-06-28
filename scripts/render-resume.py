@@ -13,7 +13,27 @@ def load_design(skill_root: Path, design_id: str) -> tuple[str, str]:
     if design is None:
         raise SystemExit(f"Unknown design_id: {design_id}")
     css = (skill_root / "templates" / design["style_file"]).read_text(encoding="utf-8")
-    return design["label"], css
+    return design["label"], typography_variables(design.get("typography_budget", {})) + css
+
+
+def format_pt(value: object) -> str:
+    number = float(value)
+    return str(int(number)) if number.is_integer() else str(number)
+
+
+def typography_variables(budget: dict) -> str:
+    if not budget:
+        return ""
+    return (
+        ":root {\n"
+        f"  --resume-body-font-size: {format_pt(budget.get('body_font_pt', 10.5))}pt;\n"
+        f"  --resume-min-body-font-size: {format_pt(budget.get('minimum_body_font_pt', 10))}pt;\n"
+        f"  --resume-heading-font-size: {format_pt(budget.get('heading_font_pt', 12))}pt;\n"
+        f"  --resume-name-font-size: {format_pt(budget.get('name_font_pt', 20))}pt;\n"
+        f"  --resume-line-height: {budget.get('line_height', 1.24)};\n"
+        f"  --resume-page-margin: {format_pt(budget.get('page_margin_mm', 16))}mm;\n"
+        "}\n"
+    )
 
 
 def editable(text: str, key: str, tag: str = "span") -> str:

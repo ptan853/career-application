@@ -20,6 +20,8 @@ def finalize_ats_pdf(document_path: Path, html_path: Path, output_pdf: Path) -> 
     ensure_ats_document(document)
     try:
         render_pdf_with_playwright(html_path, output_pdf)
+        page_count = count_pdf_pages(output_pdf)
+        verify_pdf_page_count(document, page_count)
         text = extract_pdf_text(output_pdf)
         verify_pdf_text(document, text)
     except BaseException:
@@ -35,6 +37,26 @@ def ensure_ats_document(document: dict[str, Any]) -> None:
     missing = [field for field in ("display_name", "email", "phone", "location") if not str(profile.get(field) or "").strip()]
     if missing:
         raise SystemExit("Cannot finalize ATS PDF with missing profile fields: " + ", ".join(missing))
+    verify_layout_budget(document)
+
+
+def verify_layout_budget(document: dict[str, Any]) -> None:
+    budget = document.get("layout_budget") if isinstance(document.get("layout_budget"), dict) else {}
+    body_font = float(budget.get("body_font_pt", 10.5))
+    minimum_body_font = float(budget.get("minimum_body_font_pt", 10))
+    line_height = float(budget.get("line_height", 1.24))
+    page_margin = float(budget.get("page_margin_mm", 16))
+    failures = []
+    if minimum_body_font < 10:
+        failures.append("minimum body font below 10pt")
+    if body_font < minimum_body_font:
+        failures.append("body font below declared minimum")
+    if line_height < 1.15:
+        failures.append("line height below 1.15")
+    if page_margin < 10:
+        failures.append("page margin below 10mm")
+    if failures:
+        raise SystemExit("Cannot finalize ATS PDF with unreadable layout budget: " + ", ".join(failures))
 
 
 def render_pdf_with_playwright(html_path: Path, output_pdf: Path) -> None:
@@ -64,6 +86,23 @@ def render_pdf_with_playwright(html_path: Path, output_pdf: Path) -> None:
             browser.close()
     if not output_pdf.exists() or not output_pdf.read_bytes().startswith(b"%PDF"):
         dependency_error("PDF generation did not produce a valid PDF file.")
+
+
+def count_pdf_pages(pdf_path: Path) -> int:
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        dependency_error("pypdf is required to verify PDF page count.")
+    return len(PdfReader(str(pdf_path)).pages)
+
+
+def verify_pdf_page_count(document: dict[str, Any], actual_page_count: int) -> None:
+    requested = int(document.get("page_count") or 1)
+    if actual_page_count > requested:
+        raise SystemExit(
+            f"Verified ATS PDF has {actual_page_count} pages, exceeds requested page count {requested}; "
+            "shorten or remove content instead of shrinking typography."
+        )
 
 
 def extract_pdf_text(pdf_path: Path) -> str:
