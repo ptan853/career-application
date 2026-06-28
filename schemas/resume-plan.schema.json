@@ -10,6 +10,8 @@
     "page_count": { "type": "integer", "minimum": 1 },
     "design_id": { "type": "string" },
     "photo_policy": { "type": "string" },
+    "layout_budget": { "type": "object" },
+    "page_fill_policy": { "type": "object" },
     "sections": {
       "type": "array",
       "items": {

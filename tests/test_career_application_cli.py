@@ -562,6 +562,50 @@ def test_finalize_rejects_missing_ascii_required_text() -> None:
         raise AssertionError("Expected missing ASCII text to be rejected")
 
 
+def test_page_fill_policy_warns_when_last_page_is_sparse() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    document = {"page_count": 2}
+    result = finalizer.verify_page_fill_policy(document, [80, 30])
+
+    assert result["status"] == "warning"
+    assert result["last_page_fill_ratio"] < 0.65
+
+
+def test_deliver_artifacts_copies_final_files_to_visible_output_root(tmp_path: Path) -> None:
+    target_dir = tmp_path / "target"
+    drafts = target_dir / "drafts"
+    drafts.mkdir(parents=True)
+    for name in ("resume.pdf", "resume.html", "resume_document.json", "resume_pdf_verification.json"):
+        (drafts / name).write_text(name, encoding="utf-8")
+    (target_dir / "target.json").write_text(
+        json.dumps({"target_id": "target_20260628_example_ai-engineer", "company": "Example Corp", "role": "AI Engineer"}),
+        encoding="utf-8",
+    )
+    (target_dir / "application-state.json").write_text(json.dumps({"artifact_versions": [], "status": "exported"}), encoding="utf-8")
+    output_root = tmp_path / "outputs"
+
+    result = run_cli(
+        "deliver-artifacts",
+        "--target-dir",
+        str(target_dir),
+        "--output-root",
+        str(output_root),
+    )
+
+    delivery_dir = Path(result.stdout.strip())
+    assert delivery_dir == output_root / "example-corp-ai-engineer"
+    assert (delivery_dir / "resume.pdf").read_text(encoding="utf-8") == "resume.pdf"
+    assert (delivery_dir / "resume.html").exists()
+    assert (delivery_dir / "resume_document.json").exists()
+    assert (delivery_dir / "resume_pdf_verification.json").exists()
+
+
 def test_finalize_ats_pdf_requires_verified_text_pdf_dependencies(tmp_path: Path) -> None:
     target_dir = build_reviewable_resume(tmp_path)
 

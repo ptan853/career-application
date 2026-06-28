@@ -56,7 +56,7 @@ personal facts or source material that cannot be inferred from local files.
 7. **Evidence mapping**: map timeline events into planned sections and list omitted relevant events.
 8. **Plan confirmation**: show the section order, selected events, omitted events, gaps, risks, page count, design mode, and photo policy in chat. Wait for user approval. Do not create a Markdown confirmation file.
 9. **Drafting**: draft one section at a time. For experience/project sections, rewrite one event at a time. Read `references/event-rewrite.md`.
-10. **Artifact generation**: generate `resume_document.json` and editable HTML only after the user has approved the draft. For small text revisions, update `resume_document.json` by edit key. For section/item/bullet additions, removals, or ordering changes, present a resume patch summary to the user, then run `apply-resume-patch` only after approval. Do not patch HTML directly and do not ask the user to manually print HTML. Finalize ATS PDF through `finalize-ats-pdf` only after user approval; review `resume_pdf_verification.json` for page count, ASCII text-layer checks, and CJK extraction warnings. Do not produce DOCX from this skill.
+10. **Artifact generation**: generate `resume_document.json` and editable HTML only after the user has approved the draft. For small text revisions, update `resume_document.json` by edit key. For section/item/bullet additions, removals, or ordering changes, present a resume patch summary to the user, then run `apply-resume-patch` only after approval. Do not patch HTML directly and do not ask the user to manually print HTML. Finalize ATS PDF through `finalize-ats-pdf` only after user approval; review `resume_pdf_verification.json` for page count, ASCII text-layer checks, CJK extraction warnings, and page-fill warnings. Then run `deliver-artifacts` to copy final files to a user-visible output folder. Do not produce DOCX from this skill.
 
 ## References
 
@@ -82,6 +82,7 @@ Use `scripts/career_application.py` for deterministic file operations:
 - `revise-resume-document`: update one structured edit key in `resume_document.json` and rerender HTML.
 - `apply-resume-patch`: apply a reviewed structural patch for section/item/bullet changes and rerender HTML.
 - `finalize-ats-pdf`: generate `drafts/resume.pdf` only when Playwright and PDF text verification are available.
+- `deliver-artifacts`: copy final resume artifacts to a user-visible output directory based on explicit `--output-root` or the current working directory.
 - `validate-state`: check required workspace files and supported statuses.
 
 ## Approval Gates

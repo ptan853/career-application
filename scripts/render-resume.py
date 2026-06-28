@@ -13,7 +13,22 @@ def load_design(skill_root: Path, design_id: str) -> tuple[str, str]:
     if design is None:
         raise SystemExit(f"Unknown design_id: {design_id}")
     css = (skill_root / "templates" / design["style_file"]).read_text(encoding="utf-8")
-    return design["label"], typography_variables(design.get("typography_budget", {})) + css
+    return design["label"], bundled_font_face(skill_root) + typography_variables(design.get("typography_budget", {})) + css
+
+
+def bundled_font_face(skill_root: Path) -> str:
+    font_path = skill_root / "assets" / "fonts" / "NotoSansCJKsc-Regular.otf"
+    if not font_path.exists():
+        return ""
+    return (
+        "@font-face {\n"
+        "  font-family: 'CareerApplicationCJK';\n"
+        f"  src: url('{font_path.resolve().as_uri()}') format('opentype');\n"
+        "  font-weight: 400;\n"
+        "  font-style: normal;\n"
+        "  font-display: swap;\n"
+        "}\n"
+    )
 
 
 def format_pt(value: object) -> str:

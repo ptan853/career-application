@@ -28,3 +28,5 @@ def test_render_resume_example(tmp_path: Path) -> None:
     assert 'data-edit-key="sections.projects.items.0.bullets.0"' in html
     assert "resume-edit-toolbar" in html
     assert "@media print" in html
+    assert "@font-face" in html
+    assert "NotoSansCJKsc-Regular.otf" in html

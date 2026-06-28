@@ -27,18 +27,25 @@ def finalize_ats_pdf(document_path: Path, html_path: Path, output_pdf: Path) -> 
         render_pdf_with_playwright(html_path, output_pdf)
         page_count = count_pdf_pages(output_pdf)
         verify_pdf_page_count(document, page_count)
-        text = extract_pdf_text(output_pdf)
+        text_by_page = extract_pdf_text_by_page(output_pdf)
+        text = "\n".join(text_by_page)
         text_result = verify_pdf_text(document, text)
+        fill_result = verify_page_fill_policy(document, [count_visible_lines(page_text) for page_text in text_by_page])
+        warnings = list(text_result.get("warnings", []))
+        if fill_result.get("status") == "warning":
+            warnings.append(fill_result.get("message", "Last page appears sparse."))
         verification = {
             "ok": True,
             "pdf_path": str(output_pdf),
             "page_count": page_count,
-            "warnings": text_result.get("warnings", []),
+            "warnings": warnings,
             "checks": {
                 "page_count": "passed",
                 "ascii_text_layer": "passed",
                 "cjk_text_extraction": "warning" if text_result.get("warnings") else "passed",
+                "page_fill": fill_result.get("status", "passed"),
             },
+            "page_fill": fill_result,
         }
     except BaseException:
         if output_pdf.exists():
@@ -125,15 +132,47 @@ def verify_pdf_page_count(document: dict[str, Any], actual_page_count: int) -> N
 
 
 def extract_pdf_text(pdf_path: Path) -> str:
+    return "\n".join(extract_pdf_text_by_page(pdf_path))
+
+
+def extract_pdf_text_by_page(pdf_path: Path) -> list[str]:
     try:
         from pypdf import PdfReader
     except ImportError:
         if shutil.which("pdftotext"):
             result = subprocess.run(["pdftotext", str(pdf_path), "-"], check=True, text=True, capture_output=True)
-            return result.stdout
+            return [result.stdout]
         dependency_error("pypdf or pdftotext is required to verify the PDF text layer.")
     reader = PdfReader(str(pdf_path))
-    return "\n".join(page.extract_text() or "" for page in reader.pages)
+    return [page.extract_text() or "" for page in reader.pages]
+
+
+def count_visible_lines(text: str) -> int:
+    return sum(1 for line in text.splitlines() if line.strip())
+
+
+def verify_page_fill_policy(document: dict[str, Any], line_counts: list[int]) -> dict[str, Any]:
+    requested = int(document.get("page_count") or 1)
+    policy = document.get("page_fill_policy") if isinstance(document.get("page_fill_policy"), dict) else {}
+    default_threshold = 0.65 if requested >= 2 else 0.0
+    threshold = float(policy.get("minimum_last_page_fill_ratio", default_threshold) or 0.0)
+    if requested < 2 or threshold <= 0 or len(line_counts) < requested:
+        return {"status": "passed", "last_page_fill_ratio": None}
+    reference = max(line_counts[:-1] or [1])
+    last = line_counts[-1]
+    ratio = last / reference if reference else 1.0
+    if ratio < threshold:
+        return {
+            "status": "warning",
+            "last_page_fill_ratio": round(ratio, 3),
+            "minimum_last_page_fill_ratio": threshold,
+            "message": f"Last page fill ratio {ratio:.0%} is below requested minimum {threshold:.0%}; expand relevant evidence or reduce page_count.",
+        }
+    return {
+        "status": "passed",
+        "last_page_fill_ratio": round(ratio, 3),
+        "minimum_last_page_fill_ratio": threshold,
+    }
 
 
 def verify_pdf_text(document: dict[str, Any], text: str) -> dict[str, Any]:

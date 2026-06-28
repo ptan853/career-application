@@ -31,6 +31,7 @@ Do not claim a visual template is ATS-safe unless it is single-column, text-copy
 - `revise-resume-document` updates one structured edit key and rerenders HTML.
 - `apply-resume-patch` applies reviewed section/item/bullet changes and rerenders HTML.
 - `finalize-ats-pdf` writes `drafts/resume.pdf` and `drafts/resume_pdf_verification.json` after scripted PDF export passes page count and ASCII text-layer verification.
+- `deliver-artifacts` copies final files to a visible user output folder; do not place deliverables in `~/.career-vault`.
 
 ## Patch Operations
 

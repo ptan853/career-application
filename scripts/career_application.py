@@ -7,6 +7,7 @@ import argparse
 import importlib.util
 import json
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -137,6 +138,12 @@ def design_typography_budget(design_id: str) -> dict[str, Any]:
     if not design:
         raise SystemExit(f"Unknown design_id: {design_id}")
     return dict(design.get("typography_budget", {}))
+
+
+def page_fill_policy(target: dict[str, Any]) -> dict[str, Any]:
+    if int(target.get("page_count") or 1) < 2:
+        return {"mode": "fit_within_requested_pages"}
+    return {"mode": "near_full_requested_pages", "minimum_last_page_fill_ratio": 0.65}
 
 
 def command_init_target(args: argparse.Namespace) -> None:
@@ -298,6 +305,7 @@ def command_create_plan(args: argparse.Namespace) -> None:
         "design_id": design_id,
         "photo_policy": target.get("photo_policy", "disabled"),
         "layout_budget": design_typography_budget(design_id),
+        "page_fill_policy": page_fill_policy(target),
         "sections": sections,
         "gaps": [],
         "risks": ["Plan requires user approval before prose drafting."],
@@ -561,6 +569,7 @@ def command_build_resume_document(args: argparse.Namespace) -> None:
         "design_id": plan.get("design_id", "ats-classic"),
         "photo_policy": plan.get("photo_policy", "disabled"),
         "layout_budget": plan.get("layout_budget", {}),
+        "page_fill_policy": plan.get("page_fill_policy", {}),
         "profile": {
             "display_name": profile.get("display_name", ""),
             "email": profile.get("email", ""),
@@ -849,6 +858,57 @@ def find_section(document: dict[str, Any], section_key: str) -> dict[str, Any]:
         raise SystemExit(f"Unknown section in edit key: {section_key}") from None
 
 
+def command_deliver_artifacts(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    output_root = resolve_delivery_root(args, target_dir)
+    target = read_json(target_dir / "target.json") if (target_dir / "target.json").exists() else {}
+    delivery_dir = output_root / delivery_slug(target, target_dir)
+    delivery_dir.mkdir(parents=True, exist_ok=True)
+    copied = []
+    for name in ("resume.pdf", "resume.html", "resume_document.json", "resume_pdf_verification.json"):
+        src = target_dir / "drafts" / name
+        if src.exists():
+            shutil.copy2(src, delivery_dir / name)
+            copied.append(name)
+    if not copied:
+        raise SystemExit("No deliverable resume artifacts found. Run render-resume and finalize-ats-pdf first.")
+    update_state(
+        target_dir,
+        delivery={"path": str(delivery_dir), "files": copied, "delivered_at": now_iso()},
+        status="delivered",
+    )
+    print(delivery_dir)
+
+
+def resolve_delivery_root(args: argparse.Namespace, target_dir: Path) -> Path:
+    if args.output_root:
+        return Path(args.output_root).expanduser().resolve()
+    cwd = Path.cwd().resolve()
+    if is_unsuitable_delivery_cwd(cwd):
+        return Path.home() / "Documents" / "Career Applications"
+    if (cwd / "outputs").exists():
+        return cwd / "outputs"
+    if (cwd / "deliverables").exists():
+        return cwd / "deliverables"
+    return cwd / "outputs"
+
+
+def is_unsuitable_delivery_cwd(cwd: Path) -> bool:
+    hidden_parts = {part for part in cwd.parts if part.startswith(".")}
+    if hidden_parts:
+        return True
+    if cwd.name in {"career-application", "career-timeline"}:
+        return True
+    return False
+
+
+def delivery_slug(target: dict[str, Any], target_dir: Path) -> str:
+    label = " ".join(str(target.get(field) or "").strip() for field in ("company", "role") if str(target.get(field) or "").strip())
+    if not label:
+        label = str(target.get("domain") or target.get("industry") or target.get("target_id") or target_dir.name)
+    return slugify(label, fallback=target_dir.name.replace("target_", ""))
+
+
 def command_finalize_ats_pdf(args: argparse.Namespace) -> None:
     target_dir = target_dir_from_args(args)
     html_path = target_dir / "drafts" / "resume.html"
@@ -1024,6 +1084,11 @@ def build_parser() -> argparse.ArgumentParser:
     finalize_pdf = sub.add_parser("finalize-ats-pdf", help="Generate a verified text-based ATS PDF from rendered HTML")
     finalize_pdf.add_argument("--target-dir", required=True)
     finalize_pdf.set_defaults(func=command_finalize_ats_pdf)
+
+    deliver = sub.add_parser("deliver-artifacts", help="Copy final resume artifacts to a visible output directory")
+    deliver.add_argument("--target-dir", required=True)
+    deliver.add_argument("--output-root", default="")
+    deliver.set_defaults(func=command_deliver_artifacts)
 
     validate = sub.add_parser("validate-state", help="Validate target workspace state")
     validate.add_argument("--target-dir", required=True)

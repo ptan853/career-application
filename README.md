@@ -74,7 +74,10 @@ ln -s /Users/pt623/Documents/career-application \
 
 The core CLI uses the Python standard library and targets Python 3.10+.
 Verified ATS PDF finalization additionally requires Playwright/Chromium and
-`pypdf` or Poppler `pdftotext`. Development tests use `pytest`.
+`pypdf` or Poppler `pdftotext`. Chinese rendering uses the bundled
+`assets/fonts/NotoSansCJKsc-Regular.otf` font under the included Noto CJK
+license so output does not depend on the user's system fonts. Development tests
+use `pytest`.
 
 ## Quick Start
 
@@ -166,6 +169,17 @@ python scripts/career_application.py finalize-ats-pdf \
   --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer
 ```
 
+Copy final artifacts to a visible delivery folder. Pass `--output-root` when the
+user specifies a destination; otherwise the command chooses `./outputs/`,
+`./deliverables/`, or `~/Documents/Career Applications/` when the current folder
+is not suitable.
+
+```bash
+python scripts/career_application.py deliver-artifacts \
+  --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer \
+  --output-root ./outputs
+```
+
 Run `python scripts/career_application.py --help` for all commands.
 
 ## Target Workspace Files
@@ -189,6 +203,10 @@ target_YYYYMMDD_company_role/
     resume.pdf                 # verified ATS PDF, only after finalize-ats-pdf succeeds
     resume_pdf_verification.json # PDF page/text-layer checks and warnings
 ```
+
+Delivered copies should live outside `~/.career-vault` and outside hidden state
+folders. `deliver-artifacts` copies final files into a user-visible output
+directory while keeping the target workspace available for future revisions.
 
 ## Agent Workflow
 
