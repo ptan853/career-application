@@ -187,6 +187,7 @@ target_YYYYMMDD_company_role/
     resume.html                # editable ATS resume review surface
     resume_patch.json          # optional reviewed structural patch
     resume.pdf                 # verified ATS PDF, only after finalize-ats-pdf succeeds
+    resume_pdf_verification.json # PDF page/text-layer checks and warnings
 ```
 
 ## Agent Workflow

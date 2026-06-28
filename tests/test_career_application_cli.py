@@ -514,6 +514,54 @@ def test_finalize_rejects_page_count_overflow() -> None:
         raise AssertionError("Expected page overflow to be rejected")
 
 
+def test_finalize_allows_cjk_text_extraction_gaps_with_warning() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    document = {
+        "profile": {
+            "display_name": "谭沛烽",
+            "email": "tan19991103@outlook.com",
+            "phone": "178-0123-1696",
+            "location": "长沙",
+        }
+    }
+    result = finalizer.verify_pdf_text(document, "tan19991103@outlook.com 178-0123-1696")
+
+    assert result["ok"] is True
+    assert result["warnings"] == ["谭沛烽", "长沙"]
+
+
+def test_finalize_rejects_missing_ascii_required_text() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    document = {
+        "profile": {
+            "display_name": "Pat Example",
+            "email": "pat@example.com",
+            "phone": "+1 555 0100",
+            "location": "长沙",
+        }
+    }
+
+    try:
+        finalizer.verify_pdf_text(document, "Pat Example +1 555 0100")
+    except SystemExit as exc:
+        assert "missing required ASCII fields" in str(exc)
+        assert "pat@example.com" in str(exc)
+    else:
+        raise AssertionError("Expected missing ASCII text to be rejected")
+
+
 def test_finalize_ats_pdf_requires_verified_text_pdf_dependencies(tmp_path: Path) -> None:
     target_dir = build_reviewable_resume(tmp_path)
 

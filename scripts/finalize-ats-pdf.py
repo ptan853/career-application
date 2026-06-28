@@ -15,19 +15,38 @@ def dependency_error(message: str) -> None:
     raise SystemExit(3)
 
 
+def write_json(path: Path, data: dict[str, Any]) -> None:
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def finalize_ats_pdf(document_path: Path, html_path: Path, output_pdf: Path) -> None:
     document = json.loads(document_path.read_text(encoding="utf-8"))
     ensure_ats_document(document)
+    verification: dict[str, Any] = {"ok": False, "warnings": [], "checks": {}}
     try:
         render_pdf_with_playwright(html_path, output_pdf)
         page_count = count_pdf_pages(output_pdf)
         verify_pdf_page_count(document, page_count)
         text = extract_pdf_text(output_pdf)
-        verify_pdf_text(document, text)
+        text_result = verify_pdf_text(document, text)
+        verification = {
+            "ok": True,
+            "pdf_path": str(output_pdf),
+            "page_count": page_count,
+            "warnings": text_result.get("warnings", []),
+            "checks": {
+                "page_count": "passed",
+                "ascii_text_layer": "passed",
+                "cjk_text_extraction": "warning" if text_result.get("warnings") else "passed",
+            },
+        }
     except BaseException:
         if output_pdf.exists():
             output_pdf.unlink()
         raise
+    finally:
+        if verification.get("ok"):
+            write_json(output_pdf.with_name("resume_pdf_verification.json"), verification)
 
 
 def ensure_ats_document(document: dict[str, Any]) -> None:
@@ -117,13 +136,29 @@ def extract_pdf_text(pdf_path: Path) -> str:
     return "\n".join(page.extract_text() or "" for page in reader.pages)
 
 
-def verify_pdf_text(document: dict[str, Any], text: str) -> None:
+def verify_pdf_text(document: dict[str, Any], text: str) -> dict[str, Any]:
     normalized = " ".join(text.split())
     profile = document.get("profile", {})
-    required = [profile.get("display_name", ""), profile.get("email", ""), profile.get("phone", ""), profile.get("location", "")]
-    missing = [value for value in required if value and value not in normalized]
-    if missing:
-        raise SystemExit("Verified ATS PDF text layer is missing required fields: " + ", ".join(missing))
+    required = [
+        profile.get("display_name", ""),
+        profile.get("email", ""),
+        profile.get("phone", ""),
+        profile.get("location", ""),
+    ]
+    missing = [str(value) for value in required if value and str(value) not in normalized]
+    missing_ascii = [value for value in missing if is_ascii_text(value)]
+    missing_cjk_or_unicode = [value for value in missing if not is_ascii_text(value)]
+    if missing_ascii:
+        raise SystemExit("Verified ATS PDF text layer is missing required ASCII fields: " + ", ".join(missing_ascii))
+    return {"ok": True, "warnings": missing_cjk_or_unicode}
+
+
+def is_ascii_text(value: str) -> bool:
+    try:
+        value.encode("ascii")
+    except UnicodeEncodeError:
+        return False
+    return True
 
 
 def main() -> None:

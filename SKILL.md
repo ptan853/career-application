@@ -15,7 +15,7 @@ Do not use this skill as the long-term source of professional facts. Verified id
 
 Target decides structure. Sections define evidence needs. Timeline events supply evidence.
 
-Do not output standalone Markdown resumes, Markdown review files, or ad-hoc resume drafts. Use chat for user confirmation and write durable state only to the structured workspace artifacts: `target.json`, `research.md`, `resume_plan.json`, `drafts/rewrite_drafts.json`, `drafts/resume_document.json`, `drafts/resume.html`, optional `drafts/resume_patch.json`, and verified `drafts/resume.pdf`.
+Do not output standalone Markdown resumes, Markdown review files, or ad-hoc resume drafts. Use chat for user confirmation and write durable state only to the structured workspace artifacts: `target.json`, `research.md`, `resume_plan.json`, `drafts/rewrite_drafts.json`, `drafts/resume_document.json`, `drafts/resume.html`, optional `drafts/resume_patch.json`, verified `drafts/resume.pdf`, and `drafts/resume_pdf_verification.json`.
 
 ```text
 target research -> candidate positioning -> section strategy -> evidence mapping
@@ -56,7 +56,7 @@ personal facts or source material that cannot be inferred from local files.
 7. **Evidence mapping**: map timeline events into planned sections and list omitted relevant events.
 8. **Plan confirmation**: show the section order, selected events, omitted events, gaps, risks, page count, design mode, and photo policy in chat. Wait for user approval. Do not create a Markdown confirmation file.
 9. **Drafting**: draft one section at a time. For experience/project sections, rewrite one event at a time. Read `references/event-rewrite.md`.
-10. **Artifact generation**: generate `resume_document.json` and editable HTML only after the user has approved the draft. For small text revisions, update `resume_document.json` by edit key. For section/item/bullet additions, removals, or ordering changes, present a resume patch summary to the user, then run `apply-resume-patch` only after approval. Do not patch HTML directly. Finalize ATS PDF only after user approval and verified text-layer export. Do not produce DOCX from this skill.
+10. **Artifact generation**: generate `resume_document.json` and editable HTML only after the user has approved the draft. For small text revisions, update `resume_document.json` by edit key. For section/item/bullet additions, removals, or ordering changes, present a resume patch summary to the user, then run `apply-resume-patch` only after approval. Do not patch HTML directly and do not ask the user to manually print HTML. Finalize ATS PDF through `finalize-ats-pdf` only after user approval; review `resume_pdf_verification.json` for page count, ASCII text-layer checks, and CJK extraction warnings. Do not produce DOCX from this skill.
 
 ## References
 
