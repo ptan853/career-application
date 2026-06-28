@@ -1,0 +1,34 @@
+{
+  "reason": "Move AI agent evidence higher and add a concise credential section for this target.",
+  "operations": [
+    {
+      "op": "rename-section",
+      "section_id": "projects",
+      "title": "Selected AI Projects"
+    },
+    {
+      "op": "add-section",
+      "index": 3,
+      "section": {
+        "section_id": "certifications",
+        "title": "Certifications",
+        "purpose": "Show concise additional credentials.",
+        "items": []
+      }
+    },
+    {
+      "op": "add-bullet",
+      "section_id": "projects",
+      "item_index": 0,
+      "text": "Mapped agent workflow evidence to target JD screening criteria.",
+      "source_event_ids": [
+        "evt_agent_platform"
+      ]
+    },
+    {
+      "op": "move-section",
+      "section_id": "certifications",
+      "to_index": 1
+    }
+  ]
+}

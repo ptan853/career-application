@@ -56,6 +56,17 @@ def write_vault(vault: Path, *, complete_profile: bool = True, event_status: str
     )
 
 
+
+def test_cli_exposes_structured_revision_and_verified_ats_pdf() -> None:
+    result = run_cli("--help")
+    assert "render-resume" in result.stdout
+    assert "revise-resume-document" in result.stdout
+    assert "finalize-ats-pdf" in result.stdout
+    assert "apply-resume-patch" in result.stdout
+    assert "export-pdf" not in result.stdout
+    assert "export-docx" not in result.stdout
+
+
 def test_init_target_creates_workspace_state_and_jd(tmp_path: Path) -> None:
     root = tmp_path / "apps"
     result = run_cli(
@@ -259,6 +270,181 @@ def test_record_research_and_update_target_merge_agent_findings(tmp_path: Path) 
     assert state["status"] == "planning"
 
 
+
+def build_reviewable_resume(tmp_path: Path) -> Path:
+    vault = tmp_path / "vault"
+    write_vault(vault)
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--company",
+        "Example Corp",
+        "--role",
+        "AI Engineer",
+        "--language",
+        "en",
+        "--artifact",
+        "resume",
+        "--channel",
+        "ats",
+        "--page-count",
+        "1",
+        "--jd-text",
+        "Need LLM agent engineering, tool orchestration, and evaluation.",
+    )
+    target_dir = Path(init.stdout.strip())
+    run_cli("check-timeline", "--vault", str(vault), "--target-dir", str(target_dir))
+    run_cli("create-plan", "--target-dir", str(target_dir))
+    run_cli("create-rewrite-drafts", "--target-dir", str(target_dir), "--vault", str(vault))
+    run_cli("approve-rewrite", "--target-dir", str(target_dir), "--event-id", "evt_agent_platform")
+    run_cli("build-resume-document", "--target-dir", str(target_dir))
+    run_cli("render-resume", "--target-dir", str(target_dir))
+    return target_dir
+
+
+def test_revise_resume_document_updates_json_and_rerenders_html(tmp_path: Path) -> None:
+    target_dir = build_reviewable_resume(tmp_path)
+    new_bullet = "Built a target-specific agent workflow with tool orchestration and validation controls."
+
+    run_cli(
+        "revise-resume-document",
+        "--target-dir",
+        str(target_dir),
+        "--edit-key",
+        "sections.projects.items.0.bullets.0",
+        "--text",
+        new_bullet,
+        "--reason",
+        "Tighten wording for AI Engineer JD",
+    )
+
+    document = json.loads((target_dir / "drafts" / "resume_document.json").read_text(encoding="utf-8"))
+    assert document["sections"][2]["items"][0]["bullets"][0]["text"] == new_bullet
+    assert document["change_report"][-1] == "Tighten wording for AI Engineer JD"
+    html = (target_dir / "drafts" / "resume.html").read_text(encoding="utf-8")
+    assert new_bullet in html
+    state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
+    assert state["status"] == "ready_for_review"
+
+
+def test_finalize_ats_pdf_requires_verified_text_pdf_dependencies(tmp_path: Path) -> None:
+    target_dir = build_reviewable_resume(tmp_path)
+
+    result = run_cli("finalize-ats-pdf", "--target-dir", str(target_dir), check=False)
+
+    if result.returncode == 3:
+        assert "verified ATS PDF" in result.stderr
+        assert not (target_dir / "drafts" / "resume.pdf").exists()
+        return
+    assert result.returncode == 0, result.stderr
+    pdf = target_dir / "drafts" / "resume.pdf"
+    assert pdf.exists()
+    assert pdf.read_bytes().startswith(b"%PDF")
+    state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
+    artifact_paths = [artifact["path"] for artifact in state["artifact_versions"]]
+    assert "drafts/resume.pdf" in artifact_paths
+
+
+def test_apply_resume_patch_updates_structure_and_rerenders_html(tmp_path: Path) -> None:
+    target_dir = build_reviewable_resume(tmp_path)
+    patch = tmp_path / "resume_patch.json"
+    patch.write_text(
+        json.dumps(
+            {
+                "reason": "Restructure resume for AI agent screening.",
+                "operations": [
+                    {"op": "rename-section", "section_id": "projects", "title": "Selected AI Projects"},
+                    {
+                        "op": "add-section",
+                        "section": {
+                            "section_id": "certifications",
+                            "title": "Certifications",
+                            "purpose": "Show concise additional credentials.",
+                            "items": [],
+                        },
+                        "index": 3,
+                    },
+                    {
+                        "op": "add-item",
+                        "section_id": "certifications",
+                        "item": {
+                            "source_event_ids": [],
+                            "heading": "AI Safety Workshop",
+                            "meta": "2026",
+                            "bullets": [
+                                {
+                                    "text": "Completed applied AI safety evaluation workshop.",
+                                    "source_event_ids": [],
+                                    "source_claims": [],
+                                    "risk": "needs_review",
+                                }
+                            ],
+                        },
+                    },
+                    {
+                        "op": "add-bullet",
+                        "section_id": "projects",
+                        "item_index": 0,
+                        "text": "Mapped agent workflow evidence to target JD screening criteria.",
+                        "source_event_ids": ["evt_agent_platform"],
+                    },
+                    {
+                        "op": "move-section",
+                        "section_id": "certifications",
+                        "to_index": 1,
+                    },
+                    {
+                        "op": "update-item",
+                        "section_id": "projects",
+                        "item_index": 0,
+                        "heading": "Agent Platform - JD Evidence",
+                    },
+                    {
+                        "op": "move-bullet",
+                        "section_id": "projects",
+                        "item_index": 0,
+                        "from_index": 1,
+                        "to_index": 0,
+                    },
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    run_cli("apply-resume-patch", "--target-dir", str(target_dir), "--patch", str(patch))
+
+    document = json.loads((target_dir / "drafts" / "resume_document.json").read_text(encoding="utf-8"))
+    assert [section["section_id"] for section in document["sections"]][:2] == ["summary", "certifications"]
+    projects = next(section for section in document["sections"] if section["section_id"] == "projects")
+    assert projects["title"] == "Selected AI Projects"
+    assert projects["items"][0]["heading"] == "Agent Platform - JD Evidence"
+    assert projects["items"][0]["bullets"][0]["text"] == "Mapped agent workflow evidence to target JD screening criteria."
+    certifications = next(section for section in document["sections"] if section["section_id"] == "certifications")
+    assert certifications["items"][0]["heading"] == "AI Safety Workshop"
+    assert document["change_report"][-1] == "Restructure resume for AI agent screening."
+    html = (target_dir / "drafts" / "resume.html").read_text(encoding="utf-8")
+    assert "Selected AI Projects" in html
+    assert "AI Safety Workshop" in html
+    assert "Agent Platform - JD Evidence" in html
+
+
+def test_apply_resume_patch_rejects_unknown_operations_without_modifying_document(tmp_path: Path) -> None:
+    target_dir = build_reviewable_resume(tmp_path)
+    before = (target_dir / "drafts" / "resume_document.json").read_text(encoding="utf-8")
+    patch = tmp_path / "bad_patch.json"
+    patch.write_text(json.dumps({"reason": "Bad patch", "operations": [{"op": "teleport-section"}]}), encoding="utf-8")
+
+    result = run_cli("apply-resume-patch", "--target-dir", str(target_dir), "--patch", str(patch), check=False)
+
+    assert result.returncode != 0
+    assert "Unsupported patch operation" in result.stderr
+    assert (target_dir / "drafts" / "resume_document.json").read_text(encoding="utf-8") == before
+
+
 def test_rewrite_drafts_require_plan_and_build_resume_requires_approval(tmp_path: Path) -> None:
     vault = tmp_path / "vault"
     write_vault(vault)
@@ -311,6 +497,9 @@ def test_rewrite_drafts_require_plan_and_build_resume_requires_approval(tmp_path
     html = (target_dir / "drafts" / "resume.html").read_text(encoding="utf-8")
     assert "Pat Example" in html
     assert "Agent Platform" in html
+    assert not (target_dir / "drafts" / "resume.docx").exists()
+    assert not (target_dir / "drafts" / "resume.pdf").exists()
     state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
     assert state["status"] == "ready_for_review"
-    assert state["artifact_versions"][-1]["path"] == "drafts/resume.html"
+    artifact_paths = [artifact["path"] for artifact in state["artifact_versions"]]
+    assert artifact_paths == ["drafts/resume_document.json", "drafts/resume.html"]
