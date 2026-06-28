@@ -105,10 +105,39 @@ def target_dir_from_args(args: argparse.Namespace) -> Path:
     return Path(args.target_dir).expanduser().resolve()
 
 
+def has_target_context(args: argparse.Namespace) -> bool:
+    return any(
+        str(getattr(args, field, "") or "").strip()
+        for field in ("role", "company", "domain", "industry", "jd_text")
+    )
+
+
+def target_mode(args: argparse.Namespace) -> str:
+    if args.company and args.role:
+        return "company_role"
+    if args.role:
+        return "role"
+    return "target_context"
+
+
+def resolve_photo_policy(template: str, requested: str) -> str:
+    if template == "ats-classic":
+        return "disabled"
+    if requested == "auto":
+        return "optional"
+    if requested == "none":
+        return "disabled"
+    return requested
+
+
 def command_init_target(args: argparse.Namespace) -> None:
+    if not has_target_context(args):
+        raise SystemExit("Provide at least one target context: --role, --company, --domain, --industry, or --jd-text")
+
     root = root_path(args)
     root.mkdir(parents=True, exist_ok=True)
-    target_id = f"target_{compact_date()}_{slugify(args.company or 'company')}_{slugify(args.role)}"
+    target_slug = args.role or args.company or args.domain or args.industry or "target"
+    target_id = f"target_{compact_date()}_{slugify(args.company or 'target')}_{slugify(target_slug)}"
     target_dir = root / target_id
     suffix = 2
     while target_dir.exists():
@@ -122,14 +151,18 @@ def command_init_target(args: argparse.Namespace) -> None:
         "schema_version": 1,
         "target_id": target_dir.name,
         "created_at": now_iso(),
-        "mode": "company_role" if args.company else "role",
+        "mode": target_mode(args),
         "company": args.company or "",
-        "role": args.role,
+        "role": args.role or "",
+        "domain": args.domain or "",
+        "industry": args.industry or "",
         "language": args.language,
         "region": args.region or "",
         "application_channel": args.channel,
         "artifact_goals": [args.artifact],
         "page_count": args.page_count,
+        "template_preference": args.template,
+        "photo_policy": resolve_photo_policy(args.template, args.photo),
         "hiring_priorities": extract_hiring_priorities(args.jd_text or ""),
         "must_have": [],
         "nice_to_have": [],
@@ -252,7 +285,8 @@ def command_create_plan(args: argparse.Namespace) -> None:
         "target_id": target["target_id"],
         "positioning": positioning,
         "page_count": target.get("page_count", 1),
-        "design_id": "ats-classic" if target.get("application_channel") == "ats" else "engineer-modern",
+        "design_id": target.get("template_preference", "ats-classic"),
+        "photo_policy": target.get("photo_policy", "disabled"),
         "sections": sections,
         "gaps": [],
         "risks": ["Plan requires user approval before prose drafting."],
@@ -514,6 +548,7 @@ def command_build_resume_document(args: argparse.Namespace) -> None:
         "language": target.get("language", "en"),
         "page_count": plan.get("page_count", 1),
         "design_id": plan.get("design_id", "ats-classic"),
+        "photo_policy": plan.get("photo_policy", "disabled"),
         "profile": {
             "display_name": profile.get("display_name", ""),
             "email": profile.get("email", ""),
@@ -910,12 +945,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     init = sub.add_parser("init-target", help="Create a target application workspace")
     init.add_argument("--company", default="")
-    init.add_argument("--role", required=True)
-    init.add_argument("--language", default="en")
+    init.add_argument("--role", default="")
+    init.add_argument("--domain", default="")
+    init.add_argument("--industry", default="")
+    init.add_argument("--language", required=True)
     init.add_argument("--region", default="")
     init.add_argument("--artifact", default="resume")
-    init.add_argument("--channel", default="ats")
-    init.add_argument("--page-count", type=int, default=1)
+    init.add_argument("--channel", default="unspecified")
+    init.add_argument("--page-count", type=int, required=True)
+    init.add_argument("--template", choices=["ats-classic", "engineer-modern"], default="ats-classic")
+    init.add_argument("--photo", choices=["auto", "none", "optional", "provided"], default="auto")
     init.add_argument("--jd-text", default="")
     init.set_defaults(func=command_init_target)
 

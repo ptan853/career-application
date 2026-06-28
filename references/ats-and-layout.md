@@ -18,7 +18,7 @@ Every resume must include:
 - email
 - current location
 
-Links are optional. Photo is optional and should be used only when region, role, or selected design makes it appropriate.
+Links are optional. `ats-classic` must not include a photo or photo placeholder. `engineer-modern` may include an optional photo slot only when the user chooses that version; if no photo is provided, hide the slot.
 
 ## Page Control
 

@@ -9,6 +9,7 @@
     "positioning": { "type": "string" },
     "page_count": { "type": "integer", "minimum": 1 },
     "design_id": { "type": "string" },
+    "photo_policy": { "type": "string" },
     "sections": {
       "type": "array",
       "items": {

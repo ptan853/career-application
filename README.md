@@ -86,11 +86,12 @@ python scripts/career_application.py --root ~/.career-applications/targets \
   --company "Example Corp" \
   --role "AI Engineer" \
   --language en \
-  --artifact resume \
-  --channel ats \
   --page-count 1 \
+  --template ats-classic \
   --jd-text "Paste the JD or a short target description here."
 ```
+
+`init-target` requires explicit language and page count. The target can be a role, company, domain, industry, or JD text. Use `--template ats-classic` for ATS-safe resumes with no photo, or `--template engineer-modern --photo optional` for a modern version that can reserve a photo slot.
 
 After the agent researches the JD/company, save its structured findings:
 
@@ -171,7 +172,7 @@ Run `python scripts/career_application.py --help` for all commands.
 
 ```text
 target_YYYYMMDD_company_role/
-  target.json                  # structured role/company target
+  target.json                  # structured target context, language, page count, template, photo policy
   jd.md                        # original JD or target description
   research.md                  # readable research log
   timeline_readiness.json      # career-timeline readiness check

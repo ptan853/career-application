@@ -15,6 +15,8 @@ Do not use this skill as the long-term source of professional facts. Verified id
 
 Target decides structure. Sections define evidence needs. Timeline events supply evidence.
 
+Do not output standalone Markdown resumes, Markdown review files, or ad-hoc resume drafts. Use chat for user confirmation and write durable state only to the structured workspace artifacts: `target.json`, `research.md`, `resume_plan.json`, `drafts/rewrite_drafts.json`, `drafts/resume_document.json`, `drafts/resume.html`, optional `drafts/resume_patch.json`, and verified `drafts/resume.pdf`.
+
 ```text
 target research -> candidate positioning -> section strategy -> evidence mapping
 -> plan confirmation -> section-by-section drafting -> event-by-event rewriting
@@ -41,7 +43,7 @@ personal facts or source material that cannot be inferred from local files.
 
 ## Workflow
 
-1. **Target intake**: collect missing role, company, JD/link, language, region, application channel, artifact type, page limit, and deadline.
+1. **Target intake**: collect the target context, language, page count, and resume version before initializing. Target context can be a role, company, domain, industry, or JD/link. Language and page count must be explicit. Ask whether the user wants `ats-classic` or `engineer-modern`: ATS has no photo; modern can optionally use a photo slot. Region, channel, artifact type, and deadline are optional refinements.
 2. **Target research**: if current company, role, URL, or market facts matter, research them and record source URLs.
 3. **Target profile**: write a structured target understanding before planning content.
 4. **Timeline readiness**: compare target evidence needs with available vault events.
@@ -52,9 +54,9 @@ personal facts or source material that cannot be inferred from local files.
 5. **Candidate positioning**: state the application narrative in one or two sentences.
 6. **Section strategy first**: choose sections before choosing events. Read `references/section-strategy.md`.
 7. **Evidence mapping**: map timeline events into planned sections and list omitted relevant events.
-8. **Plan confirmation**: show the section order, selected events, gaps, risks, page count, and design mode. Wait for user approval.
+8. **Plan confirmation**: show the section order, selected events, omitted events, gaps, risks, page count, design mode, and photo policy in chat. Wait for user approval. Do not create a Markdown confirmation file.
 9. **Drafting**: draft one section at a time. For experience/project sections, rewrite one event at a time. Read `references/event-rewrite.md`.
-10. **Artifact generation**: generate `resume_document.json` and editable ATS HTML only after the user has approved the draft. For small text revisions, update `resume_document.json` by edit key. For section/item/bullet additions, removals, or ordering changes, present a resume patch summary to the user, then run `apply-resume-patch` only after approval. Do not patch HTML directly. Finalize ATS PDF only after user approval and verified text-layer export. Do not produce DOCX from this skill.
+10. **Artifact generation**: generate `resume_document.json` and editable HTML only after the user has approved the draft. For small text revisions, update `resume_document.json` by edit key. For section/item/bullet additions, removals, or ordering changes, present a resume patch summary to the user, then run `apply-resume-patch` only after approval. Do not patch HTML directly. Finalize ATS PDF only after user approval and verified text-layer export. Do not produce DOCX from this skill.
 
 ## References
 
@@ -68,7 +70,7 @@ personal facts or source material that cannot be inferred from local files.
 
 Use `scripts/career_application.py` for deterministic file operations:
 
-- `init-target`: create a target workspace with `target.json`, `application-state.json`, `jd.md`, `drafts/`, and `sources/`.
+- `init-target`: create a target workspace with `target.json`, `application-state.json`, `jd.md`, `drafts/`, and `sources/`. Requires explicit `--language`, `--page-count`, and at least one of `--role`, `--company`, `--domain`, `--industry`, or `--jd-text`.
 - `record-research`: save agent-produced JD/company/role research into `research.md` and `sources/research_*.json`.
 - `update-target`: merge recorded research into `target.json` for planning.
 - `check-timeline`: inspect a `career-timeline` vault and write `timeline_readiness.json`.

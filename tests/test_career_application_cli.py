@@ -102,6 +102,110 @@ def test_init_target_creates_workspace_state_and_jd(tmp_path: Path) -> None:
     assert (target_dir / "sources").is_dir()
 
 
+def test_init_target_requires_language_page_count_and_target_context(tmp_path: Path) -> None:
+    root = tmp_path / "apps"
+
+    missing_language = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--industry",
+        "enterprise AI",
+        "--page-count",
+        "1",
+        check=False,
+    )
+    assert missing_language.returncode != 0
+
+    missing_page_count = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--industry",
+        "enterprise AI",
+        "--language",
+        "en",
+        check=False,
+    )
+    assert missing_page_count.returncode != 0
+
+    missing_context = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--language",
+        "en",
+        "--page-count",
+        "1",
+        check=False,
+    )
+    assert missing_context.returncode != 0
+    assert "Provide at least one target context" in missing_context.stderr
+
+
+def test_init_target_accepts_domain_or_industry_and_records_template_photo_policy(tmp_path: Path) -> None:
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--domain",
+        "AI agent infrastructure",
+        "--industry",
+        "enterprise software",
+        "--language",
+        "zh",
+        "--page-count",
+        "2",
+        "--template",
+        "engineer-modern",
+        "--photo",
+        "optional",
+    )
+
+    target_dir = Path(init.stdout.strip())
+    target = json.loads((target_dir / "target.json").read_text(encoding="utf-8"))
+    assert target["mode"] == "target_context"
+    assert target["role"] == ""
+    assert target["domain"] == "AI agent infrastructure"
+    assert target["industry"] == "enterprise software"
+    assert target["template_preference"] == "engineer-modern"
+    assert target["photo_policy"] == "optional"
+
+
+def test_ats_template_disables_photo_and_drives_plan_design(tmp_path: Path) -> None:
+    vault = tmp_path / "vault"
+    write_vault(vault)
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--company",
+        "Example Corp",
+        "--language",
+        "en",
+        "--page-count",
+        "1",
+        "--template",
+        "ats-classic",
+        "--photo",
+        "provided",
+        "--jd-text",
+        "Need LLM agent engineering.",
+    )
+    target_dir = Path(init.stdout.strip())
+    target = json.loads((target_dir / "target.json").read_text(encoding="utf-8"))
+    assert target["photo_policy"] == "disabled"
+
+    run_cli("check-timeline", "--vault", str(vault), "--target-dir", str(target_dir))
+    run_cli("create-plan", "--target-dir", str(target_dir))
+
+    plan = json.loads((target_dir / "resume_plan.json").read_text(encoding="utf-8"))
+    assert plan["design_id"] == "ats-classic"
+    assert plan["photo_policy"] == "disabled"
+
+
 def test_check_timeline_writes_readiness_and_reports_missing_profile(tmp_path: Path) -> None:
     vault = tmp_path / "vault"
     write_vault(vault, complete_profile=False)

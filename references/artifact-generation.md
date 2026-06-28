@@ -7,9 +7,9 @@ The first output path is structured JSON plus editable HTML.
 - `resume_document.json`: source-traceable structured document.
 - `resume.html`: editable ATS browser output.
 - `resume.pdf`: verified ATS PDF generated only after HTML approval.
-- `resume.md`: optional quick review draft.
 - `resume_patch.json`: optional reviewed structural patch for section/item/bullet changes.
-- `change_report.md`: what changed and why.
+
+Do not create Markdown resume drafts, Markdown review files, or separate change-report files. Show review summaries in chat and keep durable state in JSON/HTML/PDF artifacts.
 
 ## Rendering Rule
 
@@ -17,8 +17,9 @@ HTML/CSS is the review and revision surface. Render HTML first, review or edit i
 
 ## Template Selection
 
-- ATS applications default to `ats-classic`.
-- Engineering roles can use `engineer-modern` if ATS constraints allow it.
+- Ask the user to choose a version before planning.
+- `ats-classic` is the default for formal ATS applications, is single-column, and never uses a photo.
+- `engineer-modern` can be used for modern review/networking versions and may include an optional photo slot. If no photo is provided, hide the slot rather than leaving a blank hole.
 - Visual/networking materials can use visual templates, but mark ATS risk.
 
 Do not claim a visual template is ATS-safe unless it is single-column, text-copyable, and uses conventional headings.
