@@ -1,12 +1,23 @@
+@page {
+  size: A4;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 :root {
   color: #111;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", Arial, Helvetica, sans-serif;
   font-size: var(--resume-body-font-size, 10.5pt);
   line-height: var(--resume-line-height, 1.24);
 }
 
 body {
   margin: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
   background: #fff;
 }
 
@@ -14,6 +25,7 @@ body {
   box-sizing: border-box;
   width: 210mm;
   min-height: 297mm;
+  overflow-wrap: anywhere;
   padding: var(--resume-page-margin, 16mm);
 }
 
@@ -40,13 +52,29 @@ h2 {
 
 .item {
   margin-top: 7pt;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .item-header {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12pt;
   font-weight: 700;
+}
+
+.item-header > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.item-header > span:last-child {
+  flex: 0 0 auto;
+  max-width: 42%;
+  text-align: right;
+  white-space: normal;
 }
 
 ul {

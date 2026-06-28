@@ -89,6 +89,11 @@ def test_designs_define_typography_budgets_used_by_renderer() -> None:
     assert "--resume-min-body-font-size: 10pt" in css
     assert "--resume-line-height: 1.24" in css
     assert "--resume-page-margin: 16mm" in css
+    assert "PingFang SC" in css
+    assert "@page" in css
+    assert "size: A4" in css
+    assert "overflow-wrap: anywhere" in css
+    assert "break-inside: avoid" in css
 
 
 def test_init_target_creates_workspace_state_and_jd(tmp_path: Path) -> None:
