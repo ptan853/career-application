@@ -43,7 +43,7 @@ personal facts or source material that cannot be inferred from local files.
 
 ## Workflow
 
-1. **Target intake**: collect the target context, language, page count, and resume version before initializing. Target context can be a role, company, domain, industry, or JD/link. Language and page count must be explicit. Ask whether the user wants `ats-classic` or `engineer-modern`: ATS has no photo; modern can optionally use a photo slot. Region, channel, artifact type, and deadline are optional refinements.
+1. **Target intake**: collect the target context, language, page count, and resume version before initializing. Target context can be a role, company, domain, industry, or JD/link. Language and page count must be explicit. Ask whether the user wants `ats-classic`, `engineer-modern`, or `peifeng-standard`: ATS has no photo; modern is a light technical design; Peifeng Standard is a Chinese visual PDF-oriented design with an optional fixed photo slot. Region, channel, artifact type, and deadline are optional refinements.
 2. **Target research**: if current company, role, URL, or market facts matter, research them and record source URLs.
 3. **Target profile**: write a structured target understanding before planning content.
 4. **Timeline readiness**: compare target evidence needs with available vault events.
@@ -92,7 +92,7 @@ Ask for user approval before:
 - using inferred target claims as durable target profile fields
 - moving from resume plan to prose drafting
 - applying a structural resume patch that adds, removes, moves, or renames sections/items/bullets
-- using a visual non-ATS template for a formal application
+- using a visual non-ATS template such as `peifeng-standard` for a formal application
 - finalizing ATS PDF after the editable HTML review
 - requesting DOCX handoff to another artifact finalizer
 

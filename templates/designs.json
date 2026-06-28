@@ -28,6 +28,21 @@
         "line_height": 1.24,
         "page_margin_mm": 16
       }
+    },
+    "peifeng-standard": {
+      "label": "Peifeng standard Chinese visual resume",
+      "ats_safe": false,
+      "supports_photo": true,
+      "style_file": "styles/peifeng-standard.css",
+      "preview_file": "previews/peifeng-standard.html",
+      "typography_budget": {
+        "body_font_pt": 10,
+        "minimum_body_font_pt": 10,
+        "heading_font_pt": 11.5,
+        "name_font_pt": 22,
+        "line_height": 1.28,
+        "page_margin_mm": 14
+      }
     }
   }
 }

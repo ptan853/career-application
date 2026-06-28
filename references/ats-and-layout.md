@@ -18,7 +18,7 @@ Every resume must include:
 - email
 - current location
 
-Links are optional. `ats-classic` must not include a photo or photo placeholder. `engineer-modern` may include an optional photo slot only when the user chooses that version; if no photo is provided, hide the slot.
+Links are optional. `ats-classic` must not include a photo or photo placeholder. `engineer-modern` may include an optional photo slot only when the user chooses that version. `peifeng-standard` supports a fixed photo slot for Chinese visual resumes. If no photo is provided, hide the slot rather than leaving a blank hole.
 
 ## Typography Budget
 

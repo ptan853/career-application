@@ -21,6 +21,7 @@ HTML/CSS is the review and revision surface. Render HTML first, review or edit i
 - Ask the user to choose a version before planning.
 - `ats-classic` is the default for formal ATS applications, is single-column, and never uses a photo.
 - `engineer-modern` can be used for modern review/networking versions and may include an optional photo slot. If no photo is provided, hide the slot rather than leaving a blank hole.
+- `peifeng-standard` is a Chinese visual resume template adapted from the user-provided Peifeng reference layout. It supports a fixed photo slot, compact section dividers, and PDF-oriented human review. It is not the ATS default.
 - Visual/networking materials can use visual templates, but mark ATS risk.
 
 Do not claim a visual template is ATS-safe unless it is single-column, text-copyable, and uses conventional headings.

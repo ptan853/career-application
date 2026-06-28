@@ -71,7 +71,11 @@ def test_designs_define_typography_budgets_used_by_renderer() -> None:
     designs = json.loads((ROOT / "templates" / "designs.json").read_text(encoding="utf-8"))
     ats_budget = designs["designs"]["ats-classic"]["typography_budget"]
     modern_budget = designs["designs"]["engineer-modern"]["typography_budget"]
+    peifeng = designs["designs"]["peifeng-standard"]
 
+    assert peifeng["ats_safe"] is False
+    assert peifeng["supports_photo"] is True
+    assert peifeng["style_file"] == "styles/peifeng-standard.css"
     assert ats_budget["body_font_pt"] >= ats_budget["minimum_body_font_pt"] >= 10
     assert modern_budget["body_font_pt"] >= modern_budget["minimum_body_font_pt"] >= 10
     assert 1.15 <= ats_budget["line_height"] <= 1.3
@@ -200,6 +204,29 @@ def test_init_target_accepts_domain_or_industry_and_records_template_photo_polic
     assert target["domain"] == "AI agent infrastructure"
     assert target["industry"] == "enterprise software"
     assert target["template_preference"] == "engineer-modern"
+    assert target["photo_policy"] == "optional"
+
+
+
+def test_peifeng_template_records_optional_photo_policy(tmp_path: Path) -> None:
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--industry",
+        "AI applications",
+        "--language",
+        "zh",
+        "--page-count",
+        "1",
+        "--template",
+        "peifeng-standard",
+    )
+
+    target_dir = Path(init.stdout.strip())
+    target = json.loads((target_dir / "target.json").read_text(encoding="utf-8"))
+    assert target["template_preference"] == "peifeng-standard"
     assert target["photo_policy"] == "optional"
 
 

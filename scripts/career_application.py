@@ -1025,7 +1025,7 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--artifact", default="resume")
     init.add_argument("--channel", default="unspecified")
     init.add_argument("--page-count", type=int, required=True)
-    init.add_argument("--template", choices=["ats-classic", "engineer-modern"], default="ats-classic")
+    init.add_argument("--template", choices=["ats-classic", "engineer-modern", "peifeng-standard"], default="ats-classic")
     init.add_argument("--photo", choices=["auto", "none", "optional", "provided"], default="auto")
     init.add_argument("--jd-text", default="")
     init.set_defaults(func=command_init_target)

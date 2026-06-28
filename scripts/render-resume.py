@@ -5,6 +5,7 @@ import argparse
 import html
 import json
 from pathlib import Path
+from urllib.parse import quote
 
 
 def load_design(skill_root: Path, design_id: str) -> tuple[str, str]:
@@ -53,6 +54,39 @@ def typography_variables(budget: dict) -> str:
 
 def editable(text: str, key: str, tag: str = "span") -> str:
     return f'<{tag} class="editable" contenteditable="false" data-edit-key="{html.escape(key)}">{html.escape(text)}</{tag}>'
+
+
+def photo_uri(document: dict) -> str:
+    if document.get("design_id") == "ats-classic":
+        return ""
+    if document.get("photo_policy") not in {"optional", "provided"}:
+        return ""
+    profile = document.get("profile", {}) if isinstance(document.get("profile"), dict) else {}
+    raw = document.get("photo_path") or profile.get("photo_path")
+    photo = profile.get("photo")
+    if not raw and isinstance(photo, dict):
+        raw = photo.get("path")
+    if not raw:
+        return ""
+    text = str(raw).strip()
+    if not text:
+        return ""
+    if text.startswith(("http://", "https://", "data:", "file:")):
+        return text
+    path = Path(text).expanduser()
+    if path.exists():
+        return path.resolve().as_uri()
+    return quote(text, safe="/:#?&=%")
+
+
+def render_header(document: dict) -> str:
+    profile = document["profile"]
+    photo = photo_uri(document)
+    header_class = "resume-header" if photo else "resume-header no-photo"
+    name = editable(str(profile.get("display_name", "")), "profile.display_name", "h1")
+    contact = f'<p class="contact editable" contenteditable="false" data-edit-key="profile.contact">{render_contact(profile)}</p>'
+    image = f'<img class="profile-photo" src="{html.escape(photo)}" alt="Profile photo">' if photo else ""
+    return f'<header class="{header_class}"><div class="identity">{name}{contact}</div>{image}</header>'
 
 
 EDIT_MODE_CSS = """
@@ -165,8 +199,7 @@ def render_resume(document: dict, css: str) -> str:
     <button type="button" data-action="save-html">Save HTML</button>
   </div>
   <main class="page">
-    {editable(str(profile.get("display_name", "")), "profile.display_name", "h1")}
-    <p class="contact editable" contenteditable="false" data-edit-key="profile.contact">{render_contact(profile)}</p>
+    {render_header(document)}
     {''.join(sections)}
   </main>
   <script>{EDIT_MODE_JS}</script>
