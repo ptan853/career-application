@@ -57,9 +57,11 @@ def write_vault(vault: Path, *, complete_profile: bool = True, event_status: str
 
 
 
-def test_cli_exposes_only_html_rendering_for_resume_artifacts() -> None:
+def test_cli_exposes_structured_revision_and_verified_ats_pdf() -> None:
     result = run_cli("--help")
     assert "render-resume" in result.stdout
+    assert "revise-resume-document" in result.stdout
+    assert "finalize-ats-pdf" in result.stdout
     assert "export-pdf" not in result.stdout
     assert "export-docx" not in result.stdout
 
@@ -266,6 +268,82 @@ def test_record_research_and_update_target_merge_agent_findings(tmp_path: Path) 
     state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
     assert state["status"] == "planning"
 
+
+
+def build_reviewable_resume(tmp_path: Path) -> Path:
+    vault = tmp_path / "vault"
+    write_vault(vault)
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--company",
+        "Example Corp",
+        "--role",
+        "AI Engineer",
+        "--language",
+        "en",
+        "--artifact",
+        "resume",
+        "--channel",
+        "ats",
+        "--page-count",
+        "1",
+        "--jd-text",
+        "Need LLM agent engineering, tool orchestration, and evaluation.",
+    )
+    target_dir = Path(init.stdout.strip())
+    run_cli("check-timeline", "--vault", str(vault), "--target-dir", str(target_dir))
+    run_cli("create-plan", "--target-dir", str(target_dir))
+    run_cli("create-rewrite-drafts", "--target-dir", str(target_dir), "--vault", str(vault))
+    run_cli("approve-rewrite", "--target-dir", str(target_dir), "--event-id", "evt_agent_platform")
+    run_cli("build-resume-document", "--target-dir", str(target_dir))
+    run_cli("render-resume", "--target-dir", str(target_dir))
+    return target_dir
+
+
+def test_revise_resume_document_updates_json_and_rerenders_html(tmp_path: Path) -> None:
+    target_dir = build_reviewable_resume(tmp_path)
+    new_bullet = "Built a target-specific agent workflow with tool orchestration and validation controls."
+
+    run_cli(
+        "revise-resume-document",
+        "--target-dir",
+        str(target_dir),
+        "--edit-key",
+        "sections.projects.items.0.bullets.0",
+        "--text",
+        new_bullet,
+        "--reason",
+        "Tighten wording for AI Engineer JD",
+    )
+
+    document = json.loads((target_dir / "drafts" / "resume_document.json").read_text(encoding="utf-8"))
+    assert document["sections"][2]["items"][0]["bullets"][0]["text"] == new_bullet
+    assert document["change_report"][-1] == "Tighten wording for AI Engineer JD"
+    html = (target_dir / "drafts" / "resume.html").read_text(encoding="utf-8")
+    assert new_bullet in html
+    state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
+    assert state["status"] == "ready_for_review"
+
+
+def test_finalize_ats_pdf_requires_verified_text_pdf_dependencies(tmp_path: Path) -> None:
+    target_dir = build_reviewable_resume(tmp_path)
+
+    result = run_cli("finalize-ats-pdf", "--target-dir", str(target_dir), check=False)
+
+    if result.returncode == 3:
+        assert "verified ATS PDF" in result.stderr
+        assert not (target_dir / "drafts" / "resume.pdf").exists()
+        return
+    assert result.returncode == 0, result.stderr
+    pdf = target_dir / "drafts" / "resume.pdf"
+    assert pdf.exists()
+    assert pdf.read_bytes().startswith(b"%PDF")
+    state = json.loads((target_dir / "application-state.json").read_text(encoding="utf-8"))
+    artifact_paths = [artifact["path"] for artifact in state["artifact_versions"]]
+    assert "drafts/resume.pdf" in artifact_paths
 
 def test_rewrite_drafts_require_plan_and_build_resume_requires_approval(tmp_path: Path) -> None:
     vault = tmp_path / "vault"

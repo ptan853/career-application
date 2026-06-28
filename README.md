@@ -34,11 +34,13 @@ This skill keeps that process explicit and inspectable.
 - Generates per-event rewrite drafts and requires approval before final draft
   assembly.
 - Builds `resume_document.json` and renders editable ATS HTML for review and revision.
+- Applies AI/agent revisions by updating structured edit keys in `resume_document.json`, then rerenders HTML.
+- Finalizes ATS PDF only through a verified text-layer export path.
 
 Current limits: the agent performs internet research; the Python CLI only
-records and validates research results. Final PDF and DOCX generation are not
-part of this MVP; they should be handled by a complete artifact finalizer with
-rendered output verification.
+records and validates research results. DOCX generation is not part of this MVP. ATS PDF finalization requires
+Playwright/Chromium plus a text-layer verifier such as `pypdf` or `pdftotext`;
+without those dependencies the command fails instead of producing an unverified PDF.
 
 ## How It Works
 
@@ -55,7 +57,7 @@ record-research -> update-target
 check career-timeline vault
         |
         v
-section-first plan -> per-event rewrite -> approved resume document -> editable ATS HTML
+section-first plan -> per-event rewrite -> approved resume document -> editable ATS HTML -> verified ATS PDF
 ```
 
 The agent handles judgment-heavy work such as JD interpretation and event
@@ -70,8 +72,9 @@ ln -s /Users/pt623/Documents/career-application \
   /Users/pt623/.codex/skills/career-application
 ```
 
-The CLI uses the Python standard library and targets Python 3.10+.
-Development tests use `pytest`.
+The core CLI uses the Python standard library and targets Python 3.10+.
+Verified ATS PDF finalization additionally requires Playwright/Chromium and
+`pypdf` or Poppler `pdftotext`. Development tests use `pytest`.
 
 ## Quick Start
 
@@ -135,6 +138,23 @@ python scripts/career_application.py render-resume \
   --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer
 ```
 
+Apply an agent-approved structured revision and rerender HTML:
+
+```bash
+python scripts/career_application.py revise-resume-document \
+  --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer \
+  --edit-key sections.projects.items.0.bullets.0 \
+  --text "Rewritten bullet text." \
+  --reason "Tightened wording for the target JD."
+```
+
+Finalize a verified ATS PDF only after the HTML is approved:
+
+```bash
+python scripts/career_application.py finalize-ats-pdf \
+  --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer
+```
+
 Run `python scripts/career_application.py --help` for all commands.
 
 ## Target Workspace Files
@@ -154,6 +174,7 @@ target_YYYYMMDD_company_role/
     rewrite_drafts.json        # per-event rewrite drafts
     resume_document.json       # structured resume document
     resume.html                # editable ATS resume review surface
+    resume.pdf                 # verified ATS PDF, only after finalize-ats-pdf succeeds
 ```
 
 ## Agent Workflow
@@ -170,7 +191,8 @@ target_YYYYMMDD_company_role/
    drafting.
 6. Rewrite one event at a time and keep source event traceability.
 7. Build `resume_document.json` only after selected rewrites are approved.
-8. Render editable ATS HTML for user review and revision. Use a separate finalizer for verified PDF/DOCX output.
+8. Render editable ATS HTML for user review and revision. Apply requested changes to `resume_document.json`, then rerender HTML.
+9. Finalize ATS PDF only after the user approves the HTML. Use a separate future finalizer for DOCX output.
 
 ## Project Layout
 
@@ -180,6 +202,7 @@ career-application/
   scripts/
     career_application.py
     render-resume.py
+    finalize-ats-pdf.py
   references/
     target-research.md
     section-strategy.md
@@ -198,7 +221,7 @@ career-application/
 This is an early skill-first MVP. It currently supports target workspace
 creation, research recording, target updating, timeline readiness checks,
 section-first planning, per-event rewrite approval, structured resume document
-generation, and editable ATS HTML rendering.
+generation, editable ATS HTML rendering, structured document revisions, and verified ATS PDF finalization.
 
 Planned next steps:
 

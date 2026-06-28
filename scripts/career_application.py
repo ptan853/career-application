@@ -533,6 +533,11 @@ def command_build_resume_document(args: argparse.Namespace) -> None:
 
 def command_render_resume(args: argparse.Namespace) -> None:
     target_dir = target_dir_from_args(args)
+    render_resume_to_html(target_dir)
+    print(target_dir / "drafts" / "resume.html")
+
+
+def render_resume_to_html(target_dir: Path) -> None:
     document_path = target_dir / "drafts" / "resume_document.json"
     if not document_path.exists():
         raise SystemExit("Run build-resume-document before render-resume")
@@ -542,6 +547,75 @@ def command_render_resume(args: argparse.Namespace) -> None:
     _, css = renderer.load_design(Path(__file__).resolve().parents[1], document.get("design_id", "ats-classic"))
     output.write_text(renderer.render_resume(document, css), encoding="utf-8")
     append_artifact(target_dir, {"type": "resume_html", "path": "drafts/resume.html"})
+
+
+def command_revise_resume_document(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    document_path = target_dir / "drafts" / "resume_document.json"
+    if not document_path.exists():
+        raise SystemExit("Run build-resume-document before revise-resume-document")
+    document = read_json(document_path)
+    apply_resume_edit(document, args.edit_key, args.text)
+    reason = args.reason or f"Updated {args.edit_key}."
+    document.setdefault("change_report", []).append(reason)
+    write_json(document_path, document)
+    render_resume_to_html(target_dir)
+    print(document_path)
+
+
+def apply_resume_edit(document: dict[str, Any], edit_key: str, text: str) -> None:
+    parts = edit_key.split(".")
+    if parts == ["profile", "display_name"]:
+        document.setdefault("profile", {})["display_name"] = text
+        return
+    if len(parts) < 3 or parts[0] != "sections":
+        raise SystemExit(f"Unsupported edit key: {edit_key}")
+    section = find_section(document, parts[1])
+    if parts[2] == "title" and len(parts) == 3:
+        section["title"] = text
+        return
+    if len(parts) < 6 or parts[2] != "items":
+        raise SystemExit(f"Unsupported edit key: {edit_key}")
+    try:
+        item = section.get("items", [])[int(parts[3])]
+    except (ValueError, IndexError):
+        raise SystemExit(f"Unknown item in edit key: {edit_key}") from None
+    field = parts[4]
+    if field in {"heading", "meta"} and len(parts) == 5:
+        item[field] = text
+        return
+    if field == "bullets" and len(parts) == 6:
+        try:
+            bullet = item.get("bullets", [])[int(parts[5])]
+        except (ValueError, IndexError):
+            raise SystemExit(f"Unknown bullet in edit key: {edit_key}") from None
+        bullet["text"] = text
+        return
+    raise SystemExit(f"Unsupported edit key: {edit_key}")
+
+
+def find_section(document: dict[str, Any], section_key: str) -> dict[str, Any]:
+    sections = document.get("sections", [])
+    for section in sections:
+        if str(section.get("section_id")) == section_key:
+            return section
+    try:
+        return sections[int(section_key)]
+    except (ValueError, IndexError):
+        raise SystemExit(f"Unknown section in edit key: {section_key}") from None
+
+
+def command_finalize_ats_pdf(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    html_path = target_dir / "drafts" / "resume.html"
+    document_path = target_dir / "drafts" / "resume_document.json"
+    if not html_path.exists():
+        raise SystemExit("Run render-resume before finalize-ats-pdf")
+    finalizer = load_script_module("finalize-ats-pdf.py", "finalize_ats_pdf")
+    output = target_dir / "drafts" / "resume.pdf"
+    finalizer.finalize_ats_pdf(document_path, html_path, output)
+    append_artifact(target_dir, {"type": "resume_pdf", "path": "drafts/resume.pdf"})
+    update_state(target_dir, status="exported")
     print(output)
 
 
@@ -687,6 +761,16 @@ def build_parser() -> argparse.ArgumentParser:
     render.add_argument("--target-dir", required=True)
     render.set_defaults(func=command_render_resume)
 
+    revise = sub.add_parser("revise-resume-document", help="Update resume_document.json by edit key and rerender HTML")
+    revise.add_argument("--target-dir", required=True)
+    revise.add_argument("--edit-key", required=True)
+    revise.add_argument("--text", required=True)
+    revise.add_argument("--reason", default="")
+    revise.set_defaults(func=command_revise_resume_document)
+
+    finalize_pdf = sub.add_parser("finalize-ats-pdf", help="Generate a verified text-based ATS PDF from rendered HTML")
+    finalize_pdf.add_argument("--target-dir", required=True)
+    finalize_pdf.set_defaults(func=command_finalize_ats_pdf)
 
     validate = sub.add_parser("validate-state", help="Validate target workspace state")
     validate.add_argument("--target-dir", required=True)
