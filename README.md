@@ -65,11 +65,31 @@ rewriting. The CLI handles deterministic state, files, approvals, and rendering.
 
 ## Install
 
-Install as a Codex-discoverable local skill:
+Install `career-timeline` first, because this skill reads verified profile and
+event facts from `~/.career-vault` before drafting application materials.
+
+Install for Codex:
 
 ```bash
+mkdir -p ~/.codex/skills
 ln -s /Users/pt623/Documents/career-application \
-  /Users/pt623/.codex/skills/career-application
+  ~/.codex/skills/career-application
+```
+
+Install for Claude Code:
+
+```bash
+mkdir -p ~/.claude/skills
+ln -s /Users/pt623/Documents/career-application \
+  ~/.claude/skills/career-application
+```
+
+If your agent reads the cross-runtime skills folder, you can also link it there:
+
+```bash
+mkdir -p ~/.agents/skills
+ln -s /Users/pt623/Documents/career-application \
+  ~/.agents/skills/career-application
 ```
 
 The core CLI uses the Python standard library and targets Python 3.10+.
