@@ -74,7 +74,10 @@ ln -s /Users/pt623/Documents/career-application \
 
 The core CLI uses the Python standard library and targets Python 3.10+.
 Verified ATS PDF finalization additionally requires Playwright/Chromium and
-`pypdf` or Poppler `pdftotext`. Development tests use `pytest`.
+`pypdf` or Poppler `pdftotext`. Chinese rendering uses the bundled
+`assets/fonts/NotoSansCJKsc-Regular.otf` font under the included Noto CJK
+license so output does not depend on the user's system fonts. Development tests
+use `pytest`.
 
 ## Quick Start
 
@@ -86,11 +89,12 @@ python scripts/career_application.py --root ~/.career-applications/targets \
   --company "Example Corp" \
   --role "AI Engineer" \
   --language en \
-  --artifact resume \
-  --channel ats \
   --page-count 1 \
+  --template ats-classic \
   --jd-text "Paste the JD or a short target description here."
 ```
+
+`init-target` requires explicit language and page count. The target can be a role, company, domain, industry, or JD text. Use `--template ats-classic` for ATS-safe resumes with no photo, or `--template engineer-modern --photo optional` for a modern version that can reserve a photo slot.
 
 After the agent researches the JD/company, save its structured findings:
 
@@ -165,13 +169,24 @@ python scripts/career_application.py finalize-ats-pdf \
   --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer
 ```
 
+Copy final artifacts to a visible delivery folder. Pass `--output-root` when the
+user specifies a destination; otherwise the command chooses `./outputs/`,
+`./deliverables/`, or `~/Documents/Career Applications/` when the current folder
+is not suitable.
+
+```bash
+python scripts/career_application.py deliver-artifacts \
+  --target-dir ~/.career-applications/targets/target_YYYYMMDD_example_ai-engineer \
+  --output-root ./outputs
+```
+
 Run `python scripts/career_application.py --help` for all commands.
 
 ## Target Workspace Files
 
 ```text
 target_YYYYMMDD_company_role/
-  target.json                  # structured role/company target
+  target.json                  # structured target context, language, page count, template, photo policy
   jd.md                        # original JD or target description
   research.md                  # readable research log
   timeline_readiness.json      # career-timeline readiness check
@@ -186,7 +201,12 @@ target_YYYYMMDD_company_role/
     resume.html                # editable ATS resume review surface
     resume_patch.json          # optional reviewed structural patch
     resume.pdf                 # verified ATS PDF, only after finalize-ats-pdf succeeds
+    resume_pdf_verification.json # PDF page/text-layer checks and warnings
 ```
+
+Delivered copies should live outside `~/.career-vault` and outside hidden state
+folders. `deliver-artifacts` copies final files into a user-visible output
+directory while keeping the target workspace available for future revisions.
 
 ## Agent Workflow
 

@@ -67,6 +67,40 @@ def test_cli_exposes_structured_revision_and_verified_ats_pdf() -> None:
     assert "export-docx" not in result.stdout
 
 
+def test_designs_define_typography_budgets_used_by_renderer() -> None:
+    designs = json.loads((ROOT / "templates" / "designs.json").read_text(encoding="utf-8"))
+    ats_budget = designs["designs"]["ats-classic"]["typography_budget"]
+    modern_budget = designs["designs"]["engineer-modern"]["typography_budget"]
+    peifeng = designs["designs"]["peifeng-standard"]
+
+    assert peifeng["ats_safe"] is False
+    assert peifeng["supports_photo"] is True
+    assert peifeng["style_file"] == "styles/peifeng-standard.css"
+    assert ats_budget["body_font_pt"] >= ats_budget["minimum_body_font_pt"] >= 10
+    assert modern_budget["body_font_pt"] >= modern_budget["minimum_body_font_pt"] >= 10
+    assert 1.15 <= ats_budget["line_height"] <= 1.3
+    assert 10 <= ats_budget["page_margin_mm"] <= 18
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("render_resume", ROOT / "scripts" / "render-resume.py")
+    assert spec and spec.loader
+    renderer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(renderer)
+    _, css = renderer.load_design(ROOT, "ats-classic")
+
+    assert "--resume-body-font-size: 10.5pt" in css
+    assert "--resume-min-body-font-size: 10pt" in css
+    assert "--resume-line-height: 1.24" in css
+    assert "--resume-page-margin: 16mm" in css
+    assert "PingFang SC" in css
+    assert "@page" in css
+    assert "size: A4" in css
+    assert "margin: var(--resume-page-margin, 16mm)" in css
+    assert "overflow-wrap: anywhere" in css
+    assert "break-inside: avoid" in css
+
+
 def test_init_target_creates_workspace_state_and_jd(tmp_path: Path) -> None:
     root = tmp_path / "apps"
     result = run_cli(
@@ -100,6 +134,135 @@ def test_init_target_creates_workspace_state_and_jd(tmp_path: Path) -> None:
     assert (target_dir / "jd.md").read_text(encoding="utf-8").startswith("Build LLM")
     assert (target_dir / "drafts").is_dir()
     assert (target_dir / "sources").is_dir()
+
+
+def test_init_target_requires_language_page_count_and_target_context(tmp_path: Path) -> None:
+    root = tmp_path / "apps"
+
+    missing_language = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--industry",
+        "enterprise AI",
+        "--page-count",
+        "1",
+        check=False,
+    )
+    assert missing_language.returncode != 0
+
+    missing_page_count = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--industry",
+        "enterprise AI",
+        "--language",
+        "en",
+        check=False,
+    )
+    assert missing_page_count.returncode != 0
+
+    missing_context = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--language",
+        "en",
+        "--page-count",
+        "1",
+        check=False,
+    )
+    assert missing_context.returncode != 0
+    assert "Provide at least one target context" in missing_context.stderr
+
+
+def test_init_target_accepts_domain_or_industry_and_records_template_photo_policy(tmp_path: Path) -> None:
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--domain",
+        "AI agent infrastructure",
+        "--industry",
+        "enterprise software",
+        "--language",
+        "zh",
+        "--page-count",
+        "2",
+        "--template",
+        "engineer-modern",
+        "--photo",
+        "optional",
+    )
+
+    target_dir = Path(init.stdout.strip())
+    target = json.loads((target_dir / "target.json").read_text(encoding="utf-8"))
+    assert target["mode"] == "target_context"
+    assert target["role"] == ""
+    assert target["domain"] == "AI agent infrastructure"
+    assert target["industry"] == "enterprise software"
+    assert target["template_preference"] == "engineer-modern"
+    assert target["photo_policy"] == "optional"
+
+
+
+def test_peifeng_template_records_optional_photo_policy(tmp_path: Path) -> None:
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--industry",
+        "AI applications",
+        "--language",
+        "zh",
+        "--page-count",
+        "1",
+        "--template",
+        "peifeng-standard",
+    )
+
+    target_dir = Path(init.stdout.strip())
+    target = json.loads((target_dir / "target.json").read_text(encoding="utf-8"))
+    assert target["template_preference"] == "peifeng-standard"
+    assert target["photo_policy"] == "optional"
+
+
+def test_ats_template_disables_photo_and_drives_plan_design(tmp_path: Path) -> None:
+    vault = tmp_path / "vault"
+    write_vault(vault)
+    root = tmp_path / "apps"
+    init = run_cli(
+        "--root",
+        str(root),
+        "init-target",
+        "--company",
+        "Example Corp",
+        "--language",
+        "en",
+        "--page-count",
+        "1",
+        "--template",
+        "ats-classic",
+        "--photo",
+        "provided",
+        "--jd-text",
+        "Need LLM agent engineering.",
+    )
+    target_dir = Path(init.stdout.strip())
+    target = json.loads((target_dir / "target.json").read_text(encoding="utf-8"))
+    assert target["photo_policy"] == "disabled"
+
+    run_cli("check-timeline", "--vault", str(vault), "--target-dir", str(target_dir))
+    run_cli("create-plan", "--target-dir", str(target_dir))
+
+    plan = json.loads((target_dir / "resume_plan.json").read_text(encoding="utf-8"))
+    assert plan["design_id"] == "ats-classic"
+    assert plan["photo_policy"] == "disabled"
+    assert plan["layout_budget"]["body_font_pt"] == 10.5
+    assert plan["layout_budget"]["minimum_body_font_pt"] == 10
 
 
 def test_check_timeline_writes_readiness_and_reports_missing_profile(tmp_path: Path) -> None:
@@ -329,6 +492,159 @@ def test_revise_resume_document_updates_json_and_rerenders_html(tmp_path: Path) 
     assert state["status"] == "ready_for_review"
 
 
+def test_playwright_pdf_uses_css_page_margins() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    assert finalizer.PDF_MARGIN == {"top": "0", "right": "0", "bottom": "0", "left": "0"}
+
+
+def test_finalize_rejects_unreadable_layout_budget() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    document = {
+        "design_id": "ats-classic",
+        "page_count": 1,
+        "layout_budget": {
+            "body_font_pt": 9.5,
+            "minimum_body_font_pt": 10,
+            "line_height": 1.08,
+            "page_margin_mm": 8,
+        },
+        "profile": {
+            "display_name": "Pat Example",
+            "email": "pat@example.com",
+            "phone": "+1 555 0100",
+            "location": "San Francisco, CA",
+        },
+    }
+
+    try:
+        finalizer.ensure_ats_document(document)
+    except SystemExit as exc:
+        assert "unreadable layout budget" in str(exc)
+    else:
+        raise AssertionError("Expected unreadable layout budget to be rejected")
+
+
+def test_finalize_rejects_page_count_overflow() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    try:
+        finalizer.verify_pdf_page_count({"page_count": 1}, 2)
+    except SystemExit as exc:
+        assert "exceeds requested page count" in str(exc)
+        assert "shorten or remove content" in str(exc)
+    else:
+        raise AssertionError("Expected page overflow to be rejected")
+
+
+def test_finalize_allows_cjk_text_extraction_gaps_with_warning() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    document = {
+        "profile": {
+            "display_name": "谭沛烽",
+            "email": "tan19991103@outlook.com",
+            "phone": "178-0123-1696",
+            "location": "长沙",
+        }
+    }
+    result = finalizer.verify_pdf_text(document, "tan19991103@outlook.com 178-0123-1696")
+
+    assert result["ok"] is True
+    assert result["warnings"] == ["谭沛烽", "长沙"]
+
+
+def test_finalize_rejects_missing_ascii_required_text() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    document = {
+        "profile": {
+            "display_name": "Pat Example",
+            "email": "pat@example.com",
+            "phone": "+1 555 0100",
+            "location": "长沙",
+        }
+    }
+
+    try:
+        finalizer.verify_pdf_text(document, "Pat Example +1 555 0100")
+    except SystemExit as exc:
+        assert "missing required ASCII fields" in str(exc)
+        assert "pat@example.com" in str(exc)
+    else:
+        raise AssertionError("Expected missing ASCII text to be rejected")
+
+
+def test_page_fill_policy_warns_when_last_page_is_sparse() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("finalize_ats_pdf", ROOT / "scripts" / "finalize-ats-pdf.py")
+    assert spec and spec.loader
+    finalizer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finalizer)
+
+    document = {"page_count": 2}
+    result = finalizer.verify_page_fill_policy(document, [80, 30])
+
+    assert result["status"] == "warning"
+    assert result["last_page_fill_ratio"] < 0.65
+
+
+def test_deliver_artifacts_copies_final_files_to_visible_output_root(tmp_path: Path) -> None:
+    target_dir = tmp_path / "target"
+    drafts = target_dir / "drafts"
+    drafts.mkdir(parents=True)
+    for name in ("resume.pdf", "resume.html", "resume_document.json", "resume_pdf_verification.json"):
+        (drafts / name).write_text(name, encoding="utf-8")
+    (target_dir / "target.json").write_text(
+        json.dumps({"target_id": "target_20260628_example_ai-engineer", "company": "Example Corp", "role": "AI Engineer"}),
+        encoding="utf-8",
+    )
+    (target_dir / "application-state.json").write_text(json.dumps({"artifact_versions": [], "status": "exported"}), encoding="utf-8")
+    output_root = tmp_path / "outputs"
+
+    result = run_cli(
+        "deliver-artifacts",
+        "--target-dir",
+        str(target_dir),
+        "--output-root",
+        str(output_root),
+    )
+
+    delivery_dir = Path(result.stdout.strip())
+    assert delivery_dir == output_root / "example-corp-ai-engineer"
+    assert (delivery_dir / "resume.pdf").read_text(encoding="utf-8") == "resume.pdf"
+    assert (delivery_dir / "resume.html").exists()
+    assert (delivery_dir / "resume_document.json").exists()
+    assert (delivery_dir / "resume_pdf_verification.json").exists()
+
+
 def test_finalize_ats_pdf_requires_verified_text_pdf_dependencies(tmp_path: Path) -> None:
     target_dir = build_reviewable_resume(tmp_path)
 
@@ -491,6 +807,7 @@ def test_rewrite_drafts_require_plan_and_build_resume_requires_approval(tmp_path
 
     document = json.loads((target_dir / "drafts" / "resume_document.json").read_text(encoding="utf-8"))
     assert document["artifact_type"] == "resume"
+    assert document["layout_budget"]["minimum_body_font_pt"] == 10
     assert document["profile"]["display_name"] == "Pat Example"
     assert document["sections"][2]["section_id"] == "projects"
     assert document["sections"][2]["items"][0]["source_event_ids"] == ["evt_agent_platform"]

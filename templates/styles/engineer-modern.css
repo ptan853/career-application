@@ -1,20 +1,31 @@
+@page {
+  size: A4;
+  margin: var(--resume-page-margin, 16mm);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 :root {
   color: #172026;
-  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", Inter, Arial, Helvetica, sans-serif;
-  font-size: 10.5pt;
-  line-height: 1.36;
+  font-family: "CareerApplicationCJK", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", Inter, Arial, Helvetica, sans-serif;
+  font-size: var(--resume-body-font-size, 10.5pt);
+  line-height: var(--resume-line-height, 1.24);
 }
 
 body {
   margin: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
   background: #f5f7f8;
 }
 
 .page {
   box-sizing: border-box;
-  width: 210mm;
-  min-height: 297mm;
-  padding: 16mm 18mm;
+  width: 100%;
+  min-height: auto;
+  overflow-wrap: anywhere;
   background: #fff;
 }
 
@@ -23,7 +34,7 @@ h1, h2, h3, p {
 }
 
 h1 {
-  font-size: 22pt;
+  font-size: var(--resume-name-font-size, 22pt);
 }
 
 .contact {
@@ -34,18 +45,34 @@ h1 {
 h2 {
   margin-top: 14pt;
   color: #0f5f75;
-  font-size: 12pt;
+  font-size: var(--resume-heading-font-size, 12pt);
 }
 
 .item {
   margin-top: 7pt;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .item-header {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12pt;
   font-weight: 700;
+}
+
+.item-header > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.item-header > span:last-child {
+  flex: 0 0 auto;
+  max-width: 42%;
+  text-align: right;
+  white-space: normal;
 }
 
 ul {

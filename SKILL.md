@@ -5,92 +5,154 @@ description: Use when the user asks to apply for a job, analyze a JD, target a c
 
 # Career Application
 
-## Purpose
+## Overview
 
-Use this skill for target-specific job application work. It researches the target, checks the user's verified `career-timeline` vault, plans application materials, rewrites selected evidence, and generates editable artifacts.
+Target-first job application skill. Target → research → section strategy → evidence
+mapping → per-event rewriting → editable HTML → verified PDF. Never start by
+dumping all timeline events into a resume.
 
-Do not use this skill as the long-term source of professional facts. Verified identity, sources, events, claims, and timeline data belong in `career-timeline`.
+Long-term facts live in `career-timeline` (vault at `~/.career-vault`). This
+skill only applies them to a specific target.
 
-## Operating Rule
+## When NOT to Use
 
-Target decides structure. Sections define evidence needs. Timeline events supply evidence.
+- No concrete target (role, JD, company, domain) exists — build the timeline
+  first with `career-timeline`
+- Creating or editing long-term profile facts, events, or claims — those belong
+  in `career-timeline`
+- Just browsing career history — use `career-timeline`
 
-```text
-target research -> candidate positioning -> section strategy -> evidence mapping
--> plan confirmation -> section-by-section drafting -> event-by-event rewriting
--> render editable ATS HTML -> structured revision loop -> verified ATS PDF
-```
+## Quick Reference
 
-Never start by dumping all timeline events into a resume.
-
-## Required Boundary With Career Timeline
-
-Before drafting final application text:
-
-1. Read the local career vault, usually `~/.career-vault`.
-2. Check profile basics: name, email, phone, location.
-3. Check whether relevant events are confirmed or user-approved.
-4. If facts are missing, invoke the `career-timeline` skill/workflow yourself to fill the gaps.
-5. Do not create or confirm long-term facts inside this skill.
-
-Do not tell the user to run `/career timeline` or any other slash command. The
-agent is responsible for switching to the installed `career-timeline` skill,
-reading its `SKILL.md`, saving sources or extracting events as needed, and then
-returning here after timeline readiness passes. Ask the user only for missing
-personal facts or source material that cannot be inferred from local files.
+| Term | Meaning |
+|------|---------|
+| ATS | Applicant Tracking System — automated parser; needs single-column, text-based layout |
+| JD | Job Description |
+| CAR / STAR | Context-Action-Result / Situation-Task-Action-Result — bullet structures |
+| Vault | `~/.career-vault` — career-timeline source of truth |
 
 ## Workflow
 
-1. **Target intake**: collect missing role, company, JD/link, language, region, application channel, artifact type, page limit, and deadline.
-2. **Target research**: if current company, role, URL, or market facts matter, research them and record source URLs.
-3. **Target profile**: write a structured target understanding before planning content.
-4. **Timeline readiness**: compare target evidence needs with available vault events.
-   If readiness fails, use `career-timeline` directly to collect missing profile
-   fields, preserve source material, or create reviewed event drafts. Resume
-   this workflow only after the vault is ready or the user explicitly chooses to
-   continue with known gaps.
-5. **Candidate positioning**: state the application narrative in one or two sentences.
-6. **Section strategy first**: choose sections before choosing events. Read `references/section-strategy.md`.
-7. **Evidence mapping**: map timeline events into planned sections and list omitted relevant events.
-8. **Plan confirmation**: show the section order, selected events, gaps, risks, page count, and design mode. Wait for user approval.
-9. **Drafting**: draft one section at a time. For experience/project sections, rewrite one event at a time. Read `references/event-rewrite.md`.
-10. **Artifact generation**: generate `resume_document.json` and editable ATS HTML only after the user has approved the draft. For small text revisions, update `resume_document.json` by edit key. For section/item/bullet additions, removals, or ordering changes, present a resume patch summary to the user, then run `apply-resume-patch` only after approval. Do not patch HTML directly. Finalize ATS PDF only after user approval and verified text-layer export. Do not produce DOCX from this skill.
+### Phase 0 — Target Intake
 
-## References
+Collect target context (role, company, domain, industry, or JD/link), language,
+page count, and design mode before any research. Ask: `ats-classic` (default, no
+photo), `engineer-modern` (optional photo), or `peifeng-standard` (Chinese
+visual, photo slot). Region, channel, artifact type, and deadline are optional.
 
-- Target and company research: `references/target-research.md`
-- Section selection: `references/section-strategy.md`
-- Event rewriting: `references/event-rewrite.md`
-- Artifact generation: `references/artifact-generation.md`
-- ATS and page layout: `references/ats-and-layout.md`
+### Phase 1 — Research & Readiness
 
-## CLI Helpers
+1. Research target (see `references/target-research.md`). Record with
+   `record-research`, merge with `update-target`.
+2. Check timeline vault: `check-timeline`.
+3. If vault is missing profile fields or usable events, invoke `career-timeline`
+   directly — do NOT tell the user to run a slash command. Resume only after the
+   vault is ready or the user explicitly accepts gaps.
 
-Use `scripts/career_application.py` for deterministic file operations:
+### Phase 2 — Strategy & Plan
 
-- `init-target`: create a target workspace with `target.json`, `application-state.json`, `jd.md`, `drafts/`, and `sources/`.
-- `record-research`: save agent-produced JD/company/role research into `research.md` and `sources/research_*.json`.
-- `update-target`: merge recorded research into `target.json` for planning.
-- `check-timeline`: inspect a `career-timeline` vault and write `timeline_readiness.json`.
-- `create-plan`: generate a section-first `resume_plan.json` only after timeline readiness passes.
-- `create-rewrite-drafts`: create per-event rewrite drafts from selected plan events.
-- `approve-rewrite`: mark one event rewrite as user-approved.
-- `build-resume-document`: build `drafts/resume_document.json` only after all selected rewrites are approved.
-- `render-resume`: render `drafts/resume_document.json` to editable ATS `drafts/resume.html`.
-- `revise-resume-document`: update one structured edit key in `resume_document.json` and rerender HTML.
-- `apply-resume-patch`: apply a reviewed structural patch for section/item/bullet changes and rerender HTML.
-- `finalize-ats-pdf`: generate `drafts/resume.pdf` only when Playwright and PDF text verification are available.
-- `validate-state`: check required workspace files and supported statuses.
+1. State candidate positioning in 1-2 sentences.
+2. Choose sections before selecting events (see `references/section-strategy.md`).
+3. Map timeline events into sections. List omitted relevant events.
+4. Show plan in chat: section order, selected/omitted events, gaps, risks, page
+   count, design mode, photo policy. **Wait for user approval.** Do not create a
+   Markdown confirmation file.
+
+### Phase 3 — Drafting
+
+Draft one section at a time. For experience/project sections, rewrite one event
+at a time (see `references/event-rewrite.md`). Approve each with
+`approve-rewrite`. `build-resume-document` only after all selected rewrites are
+approved.
+
+### Phase 4 — Render & Revise
+
+1. `build-resume-document` → `render-resume` → user reviews editable HTML.
+2. Small text changes: `revise-resume-document` by edit key.
+3. Structural changes (add/remove/move sections/items/bullets): present patch
+   summary → **user approval** → `apply-resume-patch`.
+4. ATS PDF: **user approval of HTML** → `finalize-ats-pdf` → review
+   `resume_pdf_verification.json` for page count, ASCII text-layer checks, CJK
+   warnings, and page-fill warnings.
+5. `deliver-artifacts` copies final files to a visible output folder. Never
+   place deliverables in `~/.career-vault`.
+
+## Artifact Rules
+
+Only structured workspace files: `target.json`, `research.md`,
+`resume_plan.json`, `drafts/rewrite_drafts.json`, `drafts/resume_document.json`,
+`drafts/resume.html`, optional `drafts/resume_patch.json`, verified
+`drafts/resume.pdf`, `drafts/resume_pdf_verification.json`.
+
+- Never output standalone Markdown resumes, review files, or ad-hoc resume drafts.
+- Never ask the user to manually print HTML to PDF.
+- No DOCX output from this skill.
+
+## Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Dumping all timeline events into a resume template | Follow target → sections → events order |
+| Creating Markdown resume drafts | Use only structured JSON → HTML → PDF path |
+| Telling user to run `/career-timeline` | Agent invokes `career-timeline` skill directly |
+| Skipping section strategy | Choose sections BEFORE selecting events |
+| Generating PDF without HTML review | Require user approval on editable HTML first |
+| Inventing metrics, employers, or credentials | Preserve source traceability; mark weak claims |
+| Silently exceeding requested page count | Shorten bullets, reduce events, or ask user |
+| Using `peifeng-standard` for ATS applications | Default to `ats-classic`; mark ATS risk otherwise |
+
+## Red Flags
+
+These thoughts mean STOP — you are about to skip a required step:
+
+- "The timeline has enough events — let me just draft a resume"
+- "I'll create a quick Markdown version first"
+- "The user can run career-timeline themselves"
+- "This looks good, let me generate the PDF directly"
+- "I'll squeeze in more content by shrinking the font"
+- "This JD is simple, I can skip the section strategy"
+
+**All of these mean: follow the workflow. Do not skip phases.**
 
 ## Approval Gates
 
 Ask for user approval before:
+- Moving from resume plan to prose drafting
+- Applying a structural resume patch (add/remove/move/rename sections, items, or
+  bullets)
+- Using a non-ATS template (`peifeng-standard`) for a formal ATS application
+- Finalizing ATS PDF after HTML review
+- Using inferred target claims as durable target profile fields
 
-- using inferred target claims as durable target profile fields
-- moving from resume plan to prose drafting
-- applying a structural resume patch that adds, removes, moves, or renames sections/items/bullets
-- using a visual non-ATS template for a formal application
-- finalizing ATS PDF after the editable HTML review
-- requesting DOCX handoff to another artifact finalizer
+No approval needed for: reading vault files, research drafts, previews, or
+validating intermediate JSON.
 
-No approval is needed for reading local timeline files, producing research drafts, generating previews, or validating intermediate JSON.
+## CLI Helpers
+
+Core CLI via `scripts/career_application.py`:
+
+| Command | Purpose |
+|---------|---------|
+| `init-target` | Create target workspace (requires `--language`, `--page-count`, target context) |
+| `record-research` | Save agent research into `research.md` and `sources/` |
+| `update-target` | Merge recorded research into `target.json` |
+| `check-timeline` | Inspect vault; write `timeline_readiness.json` |
+| `create-plan` | Generate `resume_plan.json` (only after timeline ready) |
+| `create-rewrite-drafts` | Per-event rewrite drafts from approved plan |
+| `approve-rewrite` | Mark one event rewrite as user-approved |
+| `build-resume-document` | Build `resume_document.json` (only after all rewrites approved) |
+| `render-resume` | Render `resume_document.json` to editable `resume.html` |
+| `revise-resume-document` | Update by edit key; rerender HTML |
+| `apply-resume-patch` | Apply reviewed structural patch; rerender HTML |
+| `finalize-ats-pdf` | Generate verified `resume.pdf` (needs Playwright + text verifier) |
+| `deliver-artifacts` | Copy final files to user-visible output directory |
+| `validate-state` | Check required workspace files and statuses |
+
+## References
+
+- `references/target-research.md` — Research questions and target profile
+- `references/section-strategy.md` — Section registry and selection rules
+- `references/event-rewrite.md` — Bullet standards, guardrails, approval loop
+- `references/artifact-generation.md` — Rendering rules, template selection,
+  patch operations
+- `references/ats-and-layout.md` — ATS defaults, typography budget, page control

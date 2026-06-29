@@ -1,0 +1,137 @@
+@page {
+  size: A4;
+  margin: var(--resume-page-margin, 14mm);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color: #222;
+  font-family: "CareerApplicationCJK", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", Arial, Helvetica, sans-serif;
+  font-size: var(--resume-body-font-size, 10pt);
+  line-height: var(--resume-line-height, 1.28);
+}
+
+body {
+  margin: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  background: #f7f7f5;
+}
+
+.page {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: auto;
+  overflow-wrap: anywhere;
+  background: #fff;
+}
+
+h1, h2, h3, p {
+  margin: 0;
+}
+
+.resume-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 16pt;
+  margin-bottom: 8pt;
+}
+
+.resume-header.no-photo {
+  display: block;
+  text-align: center;
+}
+
+.identity {
+  min-width: 0;
+}
+
+h1 {
+  font-size: var(--resume-name-font-size, 22pt);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.contact {
+  margin-top: 5pt;
+  color: #333;
+  font-size: 9.5pt;
+}
+
+.profile-photo {
+  width: 24mm;
+  height: 31mm;
+  object-fit: cover;
+  border: 1px solid #d4d0c8;
+  background: #f5f2ec;
+}
+
+h2 {
+  margin-top: 10pt;
+  padding-bottom: 2pt;
+  border-bottom: 1.2px solid #333;
+  color: #111;
+  font-size: var(--resume-heading-font-size, 11.5pt);
+  font-weight: 700;
+}
+
+.item {
+  margin-top: 6pt;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12pt;
+  font-weight: 700;
+}
+
+.item-header > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.item-header > span:last-child {
+  flex: 0 0 auto;
+  max-width: 44%;
+  color: #444;
+  font-weight: 600;
+  text-align: right;
+  white-space: normal;
+}
+
+ul {
+  margin: 3pt 0 0 14pt;
+  padding: 0;
+}
+
+li {
+  margin: 1.8pt 0;
+}
+
+@media screen {
+  .page {
+    max-width: 210mm;
+    margin: 18px auto;
+    padding: var(--resume-page-margin, 14mm);
+    box-shadow: 0 2px 18px rgba(0, 0, 0, 0.10);
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .page {
+    padding: 0;
+    box-shadow: none;
+  }
+}

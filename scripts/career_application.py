@@ -7,6 +7,7 @@ import argparse
 import importlib.util
 import json
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -105,10 +106,54 @@ def target_dir_from_args(args: argparse.Namespace) -> Path:
     return Path(args.target_dir).expanduser().resolve()
 
 
+def has_target_context(args: argparse.Namespace) -> bool:
+    return any(
+        str(getattr(args, field, "") or "").strip()
+        for field in ("role", "company", "domain", "industry", "jd_text")
+    )
+
+
+def target_mode(args: argparse.Namespace) -> str:
+    if args.company and args.role:
+        return "company_role"
+    if args.role:
+        return "role"
+    return "target_context"
+
+
+def resolve_photo_policy(template: str, requested: str) -> str:
+    if template == "ats-classic":
+        return "disabled"
+    if requested == "auto":
+        return "optional"
+    if requested == "none":
+        return "disabled"
+    return requested
+
+
+def design_typography_budget(design_id: str) -> dict[str, Any]:
+    designs_path = Path(__file__).resolve().parents[1] / "templates" / "designs.json"
+    designs = read_json(designs_path)
+    design = designs.get("designs", {}).get(design_id)
+    if not design:
+        raise SystemExit(f"Unknown design_id: {design_id}")
+    return dict(design.get("typography_budget", {}))
+
+
+def page_fill_policy(target: dict[str, Any]) -> dict[str, Any]:
+    if int(target.get("page_count") or 1) < 2:
+        return {"mode": "fit_within_requested_pages"}
+    return {"mode": "near_full_requested_pages", "minimum_last_page_fill_ratio": 0.65}
+
+
 def command_init_target(args: argparse.Namespace) -> None:
+    if not has_target_context(args):
+        raise SystemExit("Provide at least one target context: --role, --company, --domain, --industry, or --jd-text")
+
     root = root_path(args)
     root.mkdir(parents=True, exist_ok=True)
-    target_id = f"target_{compact_date()}_{slugify(args.company or 'company')}_{slugify(args.role)}"
+    target_slug = args.role or args.company or args.domain or args.industry or "target"
+    target_id = f"target_{compact_date()}_{slugify(args.company or 'target')}_{slugify(target_slug)}"
     target_dir = root / target_id
     suffix = 2
     while target_dir.exists():
@@ -122,14 +167,18 @@ def command_init_target(args: argparse.Namespace) -> None:
         "schema_version": 1,
         "target_id": target_dir.name,
         "created_at": now_iso(),
-        "mode": "company_role" if args.company else "role",
+        "mode": target_mode(args),
         "company": args.company or "",
-        "role": args.role,
+        "role": args.role or "",
+        "domain": args.domain or "",
+        "industry": args.industry or "",
         "language": args.language,
         "region": args.region or "",
         "application_channel": args.channel,
         "artifact_goals": [args.artifact],
         "page_count": args.page_count,
+        "template_preference": args.template,
+        "photo_policy": resolve_photo_policy(args.template, args.photo),
         "hiring_priorities": extract_hiring_priorities(args.jd_text or ""),
         "must_have": [],
         "nice_to_have": [],
@@ -247,12 +296,16 @@ def command_create_plan(args: argparse.Namespace) -> None:
     event_ids = readiness.get("usable_event_ids", [])
     sections = choose_sections(target, event_ids)
     positioning = build_positioning(target)
+    design_id = target.get("template_preference", "ats-classic")
     plan = {
         "schema_version": 1,
         "target_id": target["target_id"],
         "positioning": positioning,
         "page_count": target.get("page_count", 1),
-        "design_id": "ats-classic" if target.get("application_channel") == "ats" else "engineer-modern",
+        "design_id": design_id,
+        "photo_policy": target.get("photo_policy", "disabled"),
+        "layout_budget": design_typography_budget(design_id),
+        "page_fill_policy": page_fill_policy(target),
         "sections": sections,
         "gaps": [],
         "risks": ["Plan requires user approval before prose drafting."],
@@ -514,6 +567,9 @@ def command_build_resume_document(args: argparse.Namespace) -> None:
         "language": target.get("language", "en"),
         "page_count": plan.get("page_count", 1),
         "design_id": plan.get("design_id", "ats-classic"),
+        "photo_policy": plan.get("photo_policy", "disabled"),
+        "layout_budget": plan.get("layout_budget", {}),
+        "page_fill_policy": plan.get("page_fill_policy", {}),
         "profile": {
             "display_name": profile.get("display_name", ""),
             "email": profile.get("email", ""),
@@ -802,6 +858,57 @@ def find_section(document: dict[str, Any], section_key: str) -> dict[str, Any]:
         raise SystemExit(f"Unknown section in edit key: {section_key}") from None
 
 
+def command_deliver_artifacts(args: argparse.Namespace) -> None:
+    target_dir = target_dir_from_args(args)
+    output_root = resolve_delivery_root(args, target_dir)
+    target = read_json(target_dir / "target.json") if (target_dir / "target.json").exists() else {}
+    delivery_dir = output_root / delivery_slug(target, target_dir)
+    delivery_dir.mkdir(parents=True, exist_ok=True)
+    copied = []
+    for name in ("resume.pdf", "resume.html", "resume_document.json", "resume_pdf_verification.json"):
+        src = target_dir / "drafts" / name
+        if src.exists():
+            shutil.copy2(src, delivery_dir / name)
+            copied.append(name)
+    if not copied:
+        raise SystemExit("No deliverable resume artifacts found. Run render-resume and finalize-ats-pdf first.")
+    update_state(
+        target_dir,
+        delivery={"path": str(delivery_dir), "files": copied, "delivered_at": now_iso()},
+        status="delivered",
+    )
+    print(delivery_dir)
+
+
+def resolve_delivery_root(args: argparse.Namespace, target_dir: Path) -> Path:
+    if args.output_root:
+        return Path(args.output_root).expanduser().resolve()
+    cwd = Path.cwd().resolve()
+    if is_unsuitable_delivery_cwd(cwd):
+        return Path.home() / "Documents" / "Career Applications"
+    if (cwd / "outputs").exists():
+        return cwd / "outputs"
+    if (cwd / "deliverables").exists():
+        return cwd / "deliverables"
+    return cwd / "outputs"
+
+
+def is_unsuitable_delivery_cwd(cwd: Path) -> bool:
+    hidden_parts = {part for part in cwd.parts if part.startswith(".")}
+    if hidden_parts:
+        return True
+    if cwd.name in {"career-application", "career-timeline"}:
+        return True
+    return False
+
+
+def delivery_slug(target: dict[str, Any], target_dir: Path) -> str:
+    label = " ".join(str(target.get(field) or "").strip() for field in ("company", "role") if str(target.get(field) or "").strip())
+    if not label:
+        label = str(target.get("domain") or target.get("industry") or target.get("target_id") or target_dir.name)
+    return slugify(label, fallback=target_dir.name.replace("target_", ""))
+
+
 def command_finalize_ats_pdf(args: argparse.Namespace) -> None:
     target_dir = target_dir_from_args(args)
     html_path = target_dir / "drafts" / "resume.html"
@@ -910,12 +1017,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     init = sub.add_parser("init-target", help="Create a target application workspace")
     init.add_argument("--company", default="")
-    init.add_argument("--role", required=True)
-    init.add_argument("--language", default="en")
+    init.add_argument("--role", default="")
+    init.add_argument("--domain", default="")
+    init.add_argument("--industry", default="")
+    init.add_argument("--language", required=True)
     init.add_argument("--region", default="")
     init.add_argument("--artifact", default="resume")
-    init.add_argument("--channel", default="ats")
-    init.add_argument("--page-count", type=int, default=1)
+    init.add_argument("--channel", default="unspecified")
+    init.add_argument("--page-count", type=int, required=True)
+    init.add_argument("--template", choices=["ats-classic", "engineer-modern", "peifeng-standard"], default="ats-classic")
+    init.add_argument("--photo", choices=["auto", "none", "optional", "provided"], default="auto")
     init.add_argument("--jd-text", default="")
     init.set_defaults(func=command_init_target)
 
@@ -973,6 +1084,11 @@ def build_parser() -> argparse.ArgumentParser:
     finalize_pdf = sub.add_parser("finalize-ats-pdf", help="Generate a verified text-based ATS PDF from rendered HTML")
     finalize_pdf.add_argument("--target-dir", required=True)
     finalize_pdf.set_defaults(func=command_finalize_ats_pdf)
+
+    deliver = sub.add_parser("deliver-artifacts", help="Copy final resume artifacts to a visible output directory")
+    deliver.add_argument("--target-dir", required=True)
+    deliver.add_argument("--output-root", default="")
+    deliver.set_defaults(func=command_deliver_artifacts)
 
     validate = sub.add_parser("validate-state", help="Validate target workspace state")
     validate.add_argument("--target-dir", required=True)
