@@ -9,9 +9,19 @@
 
 :root {
   color: #172026;
-  font-family: "CareerApplicationCJK", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", Inter, Arial, Helvetica, sans-serif;
+  font-family: "CareerApplicationLatin", Arial, "CareerApplicationCJK", Helvetica, sans-serif;
   font-size: var(--resume-body-font-size, 10.5pt);
   line-height: var(--resume-line-height, 1.24);
+}
+
+html:lang(en) {
+  font-family: "CareerApplicationLatin", Arial, "CareerApplicationCJK", Helvetica, sans-serif;
+}
+
+html:lang(zh),
+html:lang(zh-CN),
+html:lang(zh-Hans) {
+  font-family: "CareerApplicationCJK", "CareerApplicationLatin", Arial, Helvetica, sans-serif;
 }
 
 body {

@@ -74,10 +74,10 @@ ln -s /Users/pt623/Documents/career-application \
 
 The core CLI uses the Python standard library and targets Python 3.10+.
 Verified ATS PDF finalization additionally requires Playwright/Chromium and
-`pypdf` or Poppler `pdftotext`. Chinese rendering uses the bundled
-`assets/fonts/NotoSansCJKsc-Regular.otf` font under the included Noto CJK
-license so output does not depend on the user's system fonts. Development tests
-use `pytest`.
+`pypdf` or Poppler `pdftotext`. Resume HTML bundles Inter for Latin text and
+Noto Sans CJK SC for Chinese text from `assets/fonts/`, with included licenses,
+so output does not depend on the user's system fonts. Development tests use
+`pytest`.
 
 ## Quick Start
 

@@ -18,18 +18,24 @@ def load_design(skill_root: Path, design_id: str) -> tuple[str, str]:
 
 
 def bundled_font_face(skill_root: Path) -> str:
-    font_path = skill_root / "assets" / "fonts" / "NotoSansCJKsc-Regular.otf"
-    if not font_path.exists():
-        return ""
-    return (
-        "@font-face {\n"
-        "  font-family: 'CareerApplicationCJK';\n"
-        f"  src: url('{font_path.resolve().as_uri()}') format('opentype');\n"
-        "  font-weight: 400;\n"
-        "  font-style: normal;\n"
-        "  font-display: swap;\n"
-        "}\n"
-    )
+    fonts = [
+        ("CareerApplicationLatin", skill_root / "assets" / "fonts" / "Inter-Regular.woff2", "woff2"),
+        ("CareerApplicationCJK", skill_root / "assets" / "fonts" / "NotoSansCJKsc-Regular.otf", "opentype"),
+    ]
+    blocks = []
+    for family, font_path, font_format in fonts:
+        if not font_path.exists():
+            continue
+        blocks.append(
+            "@font-face {\n"
+            f"  font-family: '{family}';\n"
+            f"  src: url('{font_path.resolve().as_uri()}') format('{font_format}');\n"
+            "  font-weight: 400;\n"
+            "  font-style: normal;\n"
+            "  font-display: swap;\n"
+            "}\n"
+        )
+    return "".join(blocks)
 
 
 def format_pt(value: object) -> str:
