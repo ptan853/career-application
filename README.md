@@ -99,6 +99,26 @@ Noto Sans CJK SC for Chinese text from `assets/fonts/`, with included licenses,
 so output does not depend on the user's system fonts. Development tests use
 `pytest`.
 
+## Update
+
+If the skill is installed with a symlink as shown above, updating the local
+repository updates Codex and Claude Code at the same time:
+
+```bash
+cd /Users/pt623/Documents/career-application
+git pull --ff-only origin main
+```
+
+Open a new agent session after updating so the runtime reloads `SKILL.md`.
+
+## How To Use With An Agent
+
+Ask naturally. For example: `use career-application to tailor my resume for
+this JD`, `analyze this company and plan my resume sections`, or `generate a
+Chinese two-page resume with the Peifeng template`. The agent should collect the
+target, language, page count, and template choice, check `career-timeline`, show
+a section-first plan, rewrite events one by one, then render editable HTML.
+
 ## Quick Start
 
 Create a target workspace:
