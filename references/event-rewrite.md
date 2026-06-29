@@ -34,4 +34,16 @@ Use CAR, PAR, or STAR logic when helpful:
 - Keep bullets short enough for the requested page count.
 - Adapt wording to the target vocabulary.
 
+## Heading And Meta Standard
+
+Match the artifact language. Do not place a Chinese heading on the left and an English translation on the right, or vice versa. Technical proper nouns can remain in their standard spelling, but the resume should read as one language unless the user requested a bilingual version.
+
+Use `heading` for the main visible label and `meta` only for compact non-redundant facts:
+
+- Work: `heading = 机构 · 职位`, `meta = 日期` or `地点 | 日期`.
+- Education: `heading = 学校 · 学位/专业`, `meta = 日期`.
+- Project/open source: `heading = 项目名 · 贡献主题`, `meta = 角色 | 日期`.
+
+Before approval, check that `meta` is not repeating or translating `heading`.
+
 For each rewritten event, show heading/meta, proposed bullets, factual inputs used, unsupported claims, and options: approve, edit, regenerate, skip, or ask for more detail.
