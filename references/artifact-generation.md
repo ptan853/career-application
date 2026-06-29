@@ -16,6 +16,20 @@ Do not create Markdown resume drafts, Markdown review files, or separate change-
 
 HTML/CSS is the review and revision surface. Render HTML first, review or edit it in the browser, and keep it ATS-friendly: single-column, text-based, conventional headings, and no layout tricks needed for parsing. Do not ask users to manually print the HTML to PDF. Agent-driven text revisions must update `resume_document.json` by edit key, then rerender HTML. Structural revisions must use a reviewed patch file and `apply-resume-patch`. Final ATS PDF uses the scripted `finalize-ats-pdf` path and must verify required ASCII profile text, requested page count, and readable typography budget. CJK profile fields may produce extraction warnings because PDF text extractors can normalize glyphs differently; keep the PDF when ASCII checks and page count pass. DOCX output remains outside this skill.
 
+
+## Language And Header Metadata
+
+Each resume artifact must have one primary language from `resume_document.language`. Do not create a bilingual resume unless the user explicitly asks for a bilingual version. For Chinese resumes, keep headings, metadata, section titles, and bullets in Chinese except for fixed proper nouns, product names, repository names, model names, and standard technical terms. For English resumes, use English consistently.
+
+Item headers have two fields with different jobs:
+
+- `heading`: the visible entity/title, such as `武汉光庭信息科技 · Agent 算法工程师` or `Imperial College London · MSc Applied Computational Science and Engineering`.
+- `meta`: compact supplementary facts only, such as dates, location, role level, or contribution type. Do not repeat the organization, project name, degree, or role if it is already in `heading`. Do not use `meta` as a translation of `heading`.
+
+Bad Chinese example: `heading = 帝国理工学院 · 应用计算科学与工程 硕士`, `meta = Imperial College London | MSc Applied Computational Science & Engineering | 2023.09 - 2025.01`.
+
+Good Chinese example: `heading = 帝国理工学院 · 应用计算科学与工程 硕士`, `meta = 2023.09 - 2025.01`.
+
 ## Template Selection
 
 - Ask the user to choose a version before planning.

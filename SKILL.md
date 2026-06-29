@@ -100,6 +100,7 @@ Only structured workspace files: `target.json`, `research.md`,
 | Inventing metrics, employers, or credentials | Preserve source traceability; mark weak claims |
 | Silently exceeding requested page count | Shorten bullets, reduce events, or ask user |
 | Using `peifeng-standard` for ATS applications | Default to `ats-classic`; mark ATS risk otherwise |
+| Mixing Chinese headings with English metadata translations | Keep one primary language; use `meta` only for dates, location, or role details not already in `heading` |
 
 ## Red Flags
 
