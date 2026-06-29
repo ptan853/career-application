@@ -148,3 +148,49 @@ def test_ats_classic_never_renders_photo_even_if_path_is_present(tmp_path: Path)
 
     assert '<img class="profile-photo"' not in html
     assert "resume-header no-photo" in html
+
+
+
+def test_render_embeds_latin_font_before_cjk_font(tmp_path: Path) -> None:
+    output = tmp_path / "resume.html"
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "render-resume.py"),
+            str(ROOT / "examples" / "resume-document.example.json"),
+            str(output),
+        ],
+        check=True,
+    )
+    html = output.read_text(encoding="utf-8")
+
+    assert "CareerApplicationLatin" in html
+    assert "CareerApplicationCJK" in html
+    assert "Inter-Regular" in html
+    assert html.index("font-family: 'CareerApplicationLatin'") < html.index("font-family: 'CareerApplicationCJK'")
+    assert 'font-family: Arial, "CareerApplicationLatin", "CareerApplicationCJK"' in html
+
+
+
+def test_templates_use_language_specific_font_stacks(tmp_path: Path) -> None:
+    output = tmp_path / "resume.html"
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "render-resume.py"),
+            str(ROOT / "examples" / "resume-document.example.json"),
+            str(output),
+        ],
+        check=True,
+    )
+    html = output.read_text(encoding="utf-8")
+
+    assert 'html:lang(en)' in html
+    assert 'html:lang(zh),' in html
+    assert 'font-family: Arial, "CareerApplicationLatin", "CareerApplicationCJK"' in html
+    assert 'font-family: "CareerApplicationCJK", "CareerApplicationLatin", Arial' in html
+
+    modern_css = (ROOT / "templates" / "styles" / "engineer-modern.css").read_text(encoding="utf-8")
+    assert 'html:lang(en)' in modern_css
+    assert 'font-family: "CareerApplicationLatin", Arial, "CareerApplicationCJK"' in modern_css
+    assert 'font-family: "CareerApplicationCJK", "CareerApplicationLatin", Arial' in modern_css

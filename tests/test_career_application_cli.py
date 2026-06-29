@@ -93,7 +93,9 @@ def test_designs_define_typography_budgets_used_by_renderer() -> None:
     assert "--resume-min-body-font-size: 10pt" in css
     assert "--resume-line-height: 1.24" in css
     assert "--resume-page-margin: 16mm" in css
-    assert "PingFang SC" in css
+    assert "CareerApplicationLatin" in css
+    assert "CareerApplicationCJK" in css
+    assert css.index("CareerApplicationLatin") < css.index("CareerApplicationCJK")
     assert "@page" in css
     assert "size: A4" in css
     assert "margin: var(--resume-page-margin, 16mm)" in css
